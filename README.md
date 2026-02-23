@@ -1,6 +1,19 @@
-# ASAP Client
+<p align="center">
+  <img src="public/logo-2.webp" alt="ASAP" width="96" />
+</p>
 
-Frontend application for the ASAP (Applied Strength & Advancement Platform) workout tracking system.
+<h1 align="center">ASAP — Client</h1>
+
+<p align="center">
+  React + TypeScript frontend for the <strong>Applied Strength & Advancement Platform</strong>.
+  A self-hosted, data-driven workout tracker built for serious lifters.
+</p>
+
+<p align="center">
+  <a href="https://asap-open.github.io/asap-docs/">Docs</a> ·
+  <a href="https://asap-open.github.io/asap-docs/guide/features/sessions">Features</a> ·
+  <a href="https://asap-open.github.io/asap-docs/installation">Deployment</a>
+</p>
 
 ## Tech Stack
 
@@ -43,14 +56,14 @@ src/
 ### Prerequisites
 
 - Node.js 18+
-- npm or yarn
+- Yarn
 
 ### Setup
 
 1. **Install dependencies**
 
 ```bash
-npm install
+yarn install
 ```
 
 2. **Set up environment variables**
@@ -64,17 +77,17 @@ VITE_API_URL=http://localhost:3000
 3. **Start development server**
 
 ```bash
-npm run dev
+yarn dev
 ```
 
 The app will be available at http://localhost:5173
 
 ### Available Scripts
 
-- `npm run dev` - Start development server with HMR
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build locally
-- `npm run lint` - Run ESLint
+- `yarn dev` - Start development server with HMR
+- `yarn build` - Build for production
+- `yarn preview` - Preview production build locally
+- `yarn lint` - Run ESLint
 
 ## Building for Production
 
@@ -88,7 +101,7 @@ docker run -p 80:80 asap-client
 ### Manual Build
 
 ```bash
-npm run build
+yarn build
 ```
 
 The built files will be in the `dist/` directory. Serve them with any static file server or reverse proxy like Nginx.
@@ -125,93 +138,17 @@ The built files will be in the `dist/` directory. Serve them with any static fil
 
 ## Styling
 
-The app uses TailwindCSS with a custom design system:
+The app uses TailwindCSS with a custom design system that matches the documentation site:
 
-- **Primary Color**: `#13ecd6` (Cyan/Teal)
-- **Typography**: Epilogue font family
-- **Dark Theme**: Default color scheme
-- **Components**: Custom button, modal, and card styles
-
-### Customization
-
-Modify [tailwind.config.js](tailwind.config.js) to adjust the theme:
-
-```js
-theme: {
-  extend: {
-    colors: {
-      primary: '#13ecd6',
-      // Add more colors
-    }
-  }
-}
-```
-
-## API Integration
-
-The app communicates with the backend via the API client in `utils/api.tsx`.
-
-Base URL is configured via `VITE_API_URL` environment variable.
-
-### Example Usage
-
-```typescript
-import { api } from '@/utils/api';
-
-// Fetch exercises
-const exercises = await api.get('/api/exercises');
-
-// Create session
-const session = await api.post('/api/sessions', {
-  name: 'Push Day',
-  exercises: [...]
-});
-```
-
-## Environment Variables
-
-- `VITE_API_URL` - Backend API base URL (default: `http://localhost:3000`)
-
-## Deployment
-
-### With Docker Compose
-
-The app is automatically built and deployed with the full stack:
-
-```bash
-docker-compose up -d
-```
-
-### Standalone Deployment
-
-1. Build the app: `npm run build`
-2. Upload `dist/` contents to your hosting provider
-3. Configure your web server to serve the SPA
-4. Set `VITE_API_URL` to your backend URL
-
-### Nginx Configuration
-
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-    root /usr/share/nginx/html;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    location /api {
-        proxy_pass http://backend:3000;
-    }
-}
-```
+- **Light primary**: `#13ecd6` (teal)
+- **Dark primary**: `#9bdf57` (lime green)
+- **Font**: Epilogue
+- **Dark theme background**: `#171413` / `#1c1918`
 
 ## Contributing
 
-See the main [repository README](../README.md) for contribution guidelines.
+See the [CONTRIBUTING](CONTRIBUTING) for contribution guidelines.
 
 ## License
 
-MIT
+This project is licensed under the **GPLv3 License** — see [LICENSE](LICENSE) for details.
