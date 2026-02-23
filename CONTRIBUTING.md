@@ -37,12 +37,12 @@ The app will be available at `http://localhost:5173`.
 
 ## Available Scripts
 
-| Command | Description |
-|---|---|
-| `yarn dev` | Start Vite dev server with HMR |
-| `yarn build` | Type-check and build for production |
+| Command        | Description                          |
+| -------------- | ------------------------------------ |
+| `yarn dev`     | Start Vite dev server with HMR       |
+| `yarn build`   | Type-check and build for production  |
 | `yarn preview` | Preview the production build locally |
-| `yarn lint` | Run ESLint across all source files |
+| `yarn lint`    | Run ESLint across all source files   |
 
 ## Project Structure
 
