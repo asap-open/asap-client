@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Plus, Save, X } from "lucide-react";
+import { Plus, Save, X, Undo2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import {
   createSession,
@@ -59,6 +59,7 @@ export default function CreateSession() {
   );
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [originalEndTime, setOriginalEndTime] = useState<string | null>(null);
   const [selectedLabels, setSelectedLabels] = useState<string[]>(
     location.state?.labels || [],
   );
@@ -72,6 +73,7 @@ export default function CreateSession() {
           const session = await sessionService.getSessionById(token, sessionId);
           setSessionName(session.sessionName);
           setSelectedLabels(session.labels ?? []);
+          if (session.endTime) setOriginalEndTime(session.endTime);
           setExercises(
             session.exercises.map((ex) => ({
               id: ex.exercise.id ?? ex.exerciseId,
@@ -240,7 +242,10 @@ export default function CreateSession() {
       setIsSaving(true);
       const payload = {
         sessionName,
-        endTime: new Date().toISOString(),
+        endTime:
+          mode === "edit" && originalEndTime
+            ? originalEndTime
+            : new Date().toISOString(),
         labels: selectedLabels,
         exercises: exercises.map((ex) => ({
           exerciseId: ex.id,
@@ -280,6 +285,10 @@ export default function CreateSession() {
       }
     }
   };
+
+  const handleDiscard = () => {
+    navigate("/", { replace: true });
+  };
   const toggleLabel = (label: string) => {
     setSelectedLabels((prev) => {
       const newLabels = prev.includes(label)
@@ -304,13 +313,23 @@ export default function CreateSession() {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="flex items-center justify-between px-4 h-16">
-          <button
-            onClick={handleDelete}
-            className="flex items-center text-red-500 hover:text-red-600 font-medium transition-colors"
-          >
-            <X size={20} className="mr-1" />
-            <span>Delete</span>
-          </button>
+          {mode === "edit" ? (
+            <button
+              onClick={handleDiscard}
+              className="flex items-center text-text-muted hover:text-text font-medium transition-colors"
+            >
+              <Undo2 size={20} className="mr-1" />
+              <span>Discard</span>
+            </button>
+          ) : (
+            <button
+              onClick={handleDelete}
+              className="flex items-center text-red-500 hover:text-red-600 font-medium transition-colors"
+            >
+              <X size={20} className="mr-1" />
+              <span>Delete</span>
+            </button>
+          )}
           <div className="flex flex-col items-center">
             <h1 className="text-lg font-bold">{sessionName}</h1>
             {lastSyncTime && (
