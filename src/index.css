@@ -3,20 +3,20 @@
 @theme {
   --font-display: "Epilogue", sans-serif;
 
-  --color-primary: #2beecd;
-  --color-primary-hover: #25d6b8;
+  --color-primary: #13ecd6;
+  --color-primary-hover: #10d4be;
 
   /* Backgrounds */
-  --color-background: #f5f7f9;
+  --color-background: #f9fafb;
   --color-surface: #ffffff;
   --color-surface-hover: #f8fafc;
 
   /* Text */
-  --color-text-main: #2B2B2B;
-  --color-text-muted: #898B8C;
+  --color-text-main: #0f172a;
+  --color-text-muted: #475569;
 
   /* Border */
-  --color-border: #f6f6f6; /* slate-100 */
+  --color-border: #f3f4f6;
 }
 
 /* Global Reset */
