@@ -7,6 +7,7 @@ import {
   updateSession,
   deleteSession,
 } from "../../utils/session";
+import { sessionService } from "../../services/sessionService";
 import ExerciseCard from "../../components/session/ExerciseCard";
 import AddExerciseModal from "../../components/session/AddExerciseModal";
 import { navigateAfterSessionEnd } from "../../utils/navigation";
@@ -43,6 +44,8 @@ export default function CreateSession() {
     "Stretching",
   ];
 
+  const mode: "new" | "edit" | "resume" = location.state?.mode || "new";
+
   const [sessionName, setSessionName] = useState(
     location.state?.sessionName || "Workout Session",
   );
@@ -52,18 +55,53 @@ export default function CreateSession() {
   );
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingSession, setIsLoadingSession] = useState(
+    mode === "edit" || mode === "resume",
+  );
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [selectedLabels, setSelectedLabels] = useState<string[]>(
     location.state?.labels || [],
   );
   const [isSessionEnded, setIsSessionEnded] = useState(false);
-  // If sessionId is not provided, create one (fallback, but should not happen in this flow)
+
+  // For edit/resume: load existing session data
   useEffect(() => {
-    if (!sessionId) {
+    if ((mode === "edit" || mode === "resume") && sessionId && token) {
+      const loadExistingSession = async () => {
+        try {
+          setIsLoadingSession(true);
+          const session = await sessionService.getSessionById(token, sessionId);
+          setSessionName(session.sessionName);
+          setSelectedLabels(session.labels ?? []);
+          setExercises(
+            session.exercises.map((ex) => ({
+              id: ex.exercise.id ?? ex.exerciseId,
+              name: ex.exercise.name,
+              category: ex.exercise.category,
+              sets: ex.sets.map((s) => ({
+                weight: s.weight.toString(),
+                reps: s.reps.toString(),
+                done: s.isHardSet,
+              })),
+            })),
+          );
+        } catch (error) {
+          console.error("Failed to load session:", error);
+          alert("Failed to load session. Please try again.");
+          navigateAfterSessionEnd(navigate);
+        } finally {
+          setIsLoadingSession(false);
+        }
+      };
+      loadExistingSession();
+      return;
+    }
+    // new mode: create a session if one doesn't exist
+    if (mode === "new" && !sessionId) {
       createInitialSession();
     }
-  }, [sessionId]);
+  }, []);
 
   useEffect(() => {
     if (isSessionEnded) {
@@ -204,12 +242,10 @@ export default function CreateSession() {
   };
 
   const handleSaveAndExit = async () => {
-    await syncSession();
-
     if (!sessionId) return;
 
-    // Mark session as ended
     try {
+      setIsSaving(true);
       const payload = {
         sessionName,
         endTime: new Date().toISOString(),
@@ -232,6 +268,8 @@ export default function CreateSession() {
     } catch (error) {
       console.error("Failed to save session:", error);
       alert("Failed to save session. Please try again.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -264,6 +302,16 @@ export default function CreateSession() {
   };
   return (
     <div className="relative flex min-h-screen w-full flex-col font-display pb-40 bg-background">
+      {isLoadingSession && (
+        <div className="absolute inset-0 z-[100] flex items-center justify-center bg-background">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm font-medium text-text-muted">
+              {mode === "edit" ? "Loading session..." : "Resuming session..."}
+            </p>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="flex items-center justify-between px-4 h-16">

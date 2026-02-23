@@ -15,12 +15,15 @@ export interface WorkoutSession {
   labels?: string[];
   stats: SessionStats;
   exercises: Array<{
+    exerciseId: string;
     sets: Array<{
       weight: number;
       reps: number;
       completed: boolean;
+      isHardSet: boolean;
     }>;
     exercise: {
+      id: string;
       name: string;
       category: string;
     };
@@ -45,6 +48,7 @@ export const sessionService = {
     sessionId: number,
   ): Promise<WorkoutSession> => {
     const response = await api.get(`/sessions/${sessionId}`, token);
-    return response.data;
+    // Single session endpoint returns the object directly (no .data wrapper)
+    return response.data ?? response;
   },
 };

@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { sessionService } from "../../../services/sessionService";
 import type { WorkoutSession } from "../../../services/sessionService";
-import { deleteSession } from "../../../utils/session";
+import { deleteSession, updateSession } from "../../../utils/session";
 import SessionDetailsModal from "./SessionDetailsModel";
 import LoadingScreen from "../../ui/Loading";
 import SessionList from "./SessionList";
@@ -14,6 +15,7 @@ interface RecentHistoryProps {
 
 export default function RecentHistory({ filter }: RecentHistoryProps) {
   const { token } = useAuth();
+  const navigate = useNavigate();
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSession, setSelectedSession] = useState<WorkoutSession | null>(
@@ -42,6 +44,44 @@ export default function RecentHistory({ filter }: RecentHistoryProps) {
   const handleSessionClick = (session: WorkoutSession) => {
     setSelectedSession(session);
     setIsModalOpen(true);
+  };
+
+  const handleEdit = (session: WorkoutSession) => {
+    navigate("/session/create", {
+      state: {
+        sessionId: session.id,
+        sessionName: session.sessionName,
+        labels: session.labels ?? [],
+        mode: "edit",
+      },
+      replace: true,
+    });
+  };
+
+  const handleResume = (session: WorkoutSession) => {
+    navigate("/session/create", {
+      state: {
+        sessionId: session.id,
+        sessionName: session.sessionName,
+        labels: session.labels ?? [],
+        mode: "resume",
+      },
+      replace: true,
+    });
+  };
+
+  const handleRename = async (sessionId: number, newName: string) => {
+    try {
+      await updateSession(token, sessionId, { sessionName: newName });
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === sessionId ? { ...s, sessionName: newName } : s,
+        ),
+      );
+    } catch (error) {
+      console.error("Error renaming session:", error);
+      alert("Failed to rename session. Please try again.");
+    }
   };
 
   const handleDelete = async (sessionId: number) => {
@@ -76,6 +116,9 @@ export default function RecentHistory({ filter }: RecentHistoryProps) {
         deletingId={deletingId}
         onSessionClick={handleSessionClick}
         onDelete={handleDelete}
+        onEdit={handleEdit}
+        onResume={handleResume}
+        onRename={handleRename}
       />
 
       <SessionDetailsModal

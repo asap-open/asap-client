@@ -6,6 +6,9 @@ interface SessionListProps {
   deletingId: number | null;
   onSessionClick: (session: WorkoutSession) => void;
   onDelete: (sessionId: number) => void;
+  onEdit: (session: WorkoutSession) => void;
+  onResume: (session: WorkoutSession) => void;
+  onRename: (sessionId: number, newName: string) => Promise<void>;
 }
 
 export default function SessionList({
@@ -13,6 +16,9 @@ export default function SessionList({
   deletingId,
   onSessionClick,
   onDelete,
+  onEdit,
+  onResume,
+  onRename,
 }: SessionListProps) {
   return (
     <div className="flex flex-col gap-3">
@@ -22,6 +28,9 @@ export default function SessionList({
           session={session}
           onSessionClick={onSessionClick}
           onDelete={onDelete}
+          onEdit={onEdit}
+          onResume={onResume}
+          onRename={onRename}
           isDeleting={deletingId === session.id}
         />
       ))}
