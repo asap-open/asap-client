@@ -70,6 +70,17 @@ export default function RecentHistory({ filter }: RecentHistoryProps) {
     });
   };
 
+  const handleCopy = (session: WorkoutSession) => {
+    navigate("/session/create", {
+      state: {
+        mode: "copy",
+        sessionName: session.sessionName,
+        labels: session.labels ?? [],
+        copyExercises: session.exercises,
+      },
+    });
+  };
+
   const handleRename = async (sessionId: number, newName: string) => {
     try {
       await updateSession(token, sessionId, { sessionName: newName });
@@ -119,6 +130,7 @@ export default function RecentHistory({ filter }: RecentHistoryProps) {
         onEdit={handleEdit}
         onResume={handleResume}
         onRename={handleRename}
+        onCopy={handleCopy}
       />
 
       <SessionDetailsModal

@@ -6,6 +6,7 @@ import {
   createSession,
   updateSession,
   deleteSession,
+  type CreateSessionPayload,
 } from "../../utils/session";
 import { sessionService } from "../../services/sessionService";
 import ExerciseCard from "../../components/session/ExerciseCard";
@@ -43,12 +44,32 @@ export default function CreateSession() {
     "Stretching",
   ];
 
-  const mode: "new" | "edit" | "resume" = location.state?.mode || "new";
+  const mode: "new" | "edit" | "resume" | "copy" =
+    location.state?.mode || "new";
 
   const [sessionName, setSessionName] = useState(
     location.state?.sessionName || "Workout Session",
   );
-  const [exercises, setExercises] = useState<SessionExercise[]>([]);
+  const [exercises, setExercises] = useState<SessionExercise[]>(
+    mode === "copy" && location.state?.copyExercises
+      ? location.state.copyExercises.map(
+          (ex: {
+            exerciseId: string;
+            exercise: { id: string; name: string; category: string };
+            sets: { weight: number; reps: number; isHardSet: boolean }[];
+          }) => ({
+            id: ex.exercise?.id ?? ex.exerciseId,
+            name: ex.exercise?.name ?? "",
+            category: ex.exercise?.category ?? "",
+            sets: ex.sets.map((s) => ({
+              weight: s.weight.toString(),
+              reps: s.reps.toString(),
+              done: false,
+            })),
+          }),
+        )
+      : [],
+  );
   const [sessionId, setSessionId] = useState<number | null>(
     location.state?.sessionId || null,
   );
@@ -57,6 +78,7 @@ export default function CreateSession() {
   const [isLoadingSession, setIsLoadingSession] = useState(
     mode === "edit" || mode === "resume",
   );
+
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [originalEndTime, setOriginalEndTime] = useState<string | null>(null);
@@ -97,7 +119,8 @@ export default function CreateSession() {
       loadExistingSession();
       return;
     }
-    // new mode: create a session if one doesn't exist
+    // new mode: create a session immediately (for auto-save)
+    // copy mode: session is created on explicit Save, not upfront
     if (mode === "new" && !sessionId) {
       createInitialSession();
     }
@@ -236,30 +259,44 @@ export default function CreateSession() {
   };
 
   const handleSaveAndExit = async () => {
-    if (!sessionId) return;
-
     try {
       setIsSaving(true);
-      const payload = {
+
+      const exercisesPayload = exercises.map((ex) => ({
+        exerciseId: ex.id,
+        sets: ex.sets
+          .filter((set) => set.weight && set.reps)
+          .map((set) => ({
+            weight: parseFloat(set.weight) || 0,
+            reps: parseInt(set.reps) || 0,
+            isHardSet: set.done,
+          })),
+      }));
+
+      let targetId = sessionId;
+
+      if (mode === "copy" && !targetId) {
+        // Copy mode: create a shell session first to get an id, then update like every other mode
+        const now = new Date().toISOString();
+        const created = await createSession(token, {
+          sessionName,
+          startTime: now,
+          exercises: [],
+        } as CreateSessionPayload);
+        targetId = created.id;
+      }
+
+      if (!targetId) return;
+      await updateSession(token, targetId, {
         sessionName,
         endTime:
           mode === "edit" && originalEndTime
             ? originalEndTime
             : new Date().toISOString(),
         labels: selectedLabels,
-        exercises: exercises.map((ex) => ({
-          exerciseId: ex.id,
-          sets: ex.sets
-            .filter((set) => set.weight && set.reps)
-            .map((set) => ({
-              weight: parseFloat(set.weight) || 0,
-              reps: parseInt(set.reps) || 0,
-              isHardSet: set.done,
-            })),
-        })),
-      };
+        exercises: exercisesPayload,
+      });
 
-      await updateSession(token, sessionId, payload);
       navigate("/", { replace: true });
     } catch (error) {
       console.error("Failed to save session:", error);
@@ -313,7 +350,7 @@ export default function CreateSession() {
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="flex items-center justify-between px-4 h-16">
-          {mode === "edit" ? (
+          {mode === "edit" || mode === "copy" ? (
             <button
               onClick={handleDiscard}
               className="flex items-center text-text-muted hover:text-text font-medium transition-colors"

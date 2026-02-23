@@ -16,6 +16,8 @@ export interface SessionExerciseInput {
 export interface CreateSessionPayload {
   sessionName: string;
   startTime: string;
+  endTime?: string;
+  labels?: string[];
   exercises: SessionExerciseInput[];
 }
 
@@ -24,6 +26,7 @@ export interface UpdateSessionPayload {
   exercises?: SessionExerciseInput[];
   endTime?: string;
   startTime?: string;
+  labels?: string[];
 }
 
 export interface CalendarStats {

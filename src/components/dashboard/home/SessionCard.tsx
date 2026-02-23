@@ -7,6 +7,7 @@ import {
   CaseSensitive,
   Check,
   X as XIcon,
+  Copy,
 } from "lucide-react";
 import type { WorkoutSession } from "../../../services/sessionService";
 
@@ -17,6 +18,7 @@ interface SessionCardProps {
   onEdit: (session: WorkoutSession) => void;
   onResume: (session: WorkoutSession) => void;
   onRename: (sessionId: number, newName: string) => Promise<void>;
+  onCopy: (session: WorkoutSession) => void;
   isDeleting: boolean;
 }
 
@@ -27,6 +29,7 @@ export default function SessionCard({
   onEdit,
   onResume,
   onRename,
+  onCopy,
   isDeleting,
 }: SessionCardProps) {
   const [showMenu, setShowMenu] = useState(false);
@@ -121,6 +124,12 @@ export default function SessionCard({
     e.stopPropagation();
     setShowMenu(false);
     onResume(session);
+  };
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowMenu(false);
+    onCopy(session);
   };
 
   const handleRenameClick = (e: React.MouseEvent) => {
@@ -253,6 +262,13 @@ export default function SessionCard({
                 <span className="text-primary">Resume</span>
               </button>
             )}
+            <button
+              onClick={handleCopy}
+              className="w-full px-4 py-2.5 text-left text-sm font-medium text-text-muted flex items-center gap-3 hover:bg-surface-hover transition-colors"
+            >
+              <Copy size={16} />
+              <span>Copy as new</span>
+            </button>
             <button
               onClick={handleRenameClick}
               className="w-full px-4 py-2.5 text-left text-sm font-medium text-text-muted flex items-center gap-3 hover:bg-surface-hover transition-colors"
