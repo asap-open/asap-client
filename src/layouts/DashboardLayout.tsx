@@ -3,7 +3,6 @@ import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { House, Dumbbell, BarChart2, Plus, LogOut, User } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import QuickActions from "../components/dashboard/home/QuickActions";
-import { navigateAfterLogout } from "../utils/navigation";
 
 export default function DashboardLayout() {
   const { logout } = useAuth();
@@ -12,7 +11,7 @@ export default function DashboardLayout() {
 
   const handleLogout = () => {
     logout();
-    navigateAfterLogout(navigate);
+    navigate("/get-started", { replace: true });
   };
 
   const desktopNavItems = [

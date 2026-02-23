@@ -11,7 +11,6 @@ import ActionButtons from "../../components/profile/actions/ActionButtons";
 import { fetchProfileWithSWR } from "../../utils/profile";
 import type { UserData, UserProfile } from "../../utils/profile";
 import LoadingScreen from "../../components/ui/Loading";
-import { navigateAfterLogout } from "../../utils/navigation";
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -51,7 +50,7 @@ export default function Profile() {
 
   const handleLogout = () => {
     logout();
-    navigateAfterLogout(navigate);
+    navigate("/get-started", { replace: true });
   };
 
   const calculateBMI = () => {

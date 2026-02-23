@@ -10,7 +10,6 @@ import {
 import { sessionService } from "../../services/sessionService";
 import ExerciseCard from "../../components/session/ExerciseCard";
 import AddExerciseModal from "../../components/session/AddExerciseModal";
-import { navigateAfterSessionEnd } from "../../utils/navigation";
 
 interface Set {
   weight: string;
@@ -63,7 +62,6 @@ export default function CreateSession() {
   const [selectedLabels, setSelectedLabels] = useState<string[]>(
     location.state?.labels || [],
   );
-  const [isSessionEnded, setIsSessionEnded] = useState(false);
 
   // For edit/resume: load existing session data
   useEffect(() => {
@@ -89,7 +87,7 @@ export default function CreateSession() {
         } catch (error) {
           console.error("Failed to load session:", error);
           alert("Failed to load session. Please try again.");
-          navigateAfterSessionEnd(navigate);
+          navigate("/", { replace: true });
         } finally {
           setIsLoadingSession(false);
         }
@@ -102,12 +100,6 @@ export default function CreateSession() {
       createInitialSession();
     }
   }, []);
-
-  useEffect(() => {
-    if (isSessionEnded) {
-      navigateAfterSessionEnd(navigate);
-    }
-  }, [isSessionEnded, navigate]);
 
   // Auto-save every 10 seconds if there are changes
   useEffect(() => {
@@ -263,8 +255,7 @@ export default function CreateSession() {
       };
 
       await updateSession(token, sessionId, payload);
-      setIsSessionEnded(true);
-      navigateAfterSessionEnd(navigate);
+      navigate("/", { replace: true });
     } catch (error) {
       console.error("Failed to save session:", error);
       alert("Failed to save session. Please try again.");
@@ -273,21 +264,19 @@ export default function CreateSession() {
     }
   };
 
-  const handleCancel = async () => {
+  const handleDelete = async () => {
     if (
       sessionId &&
       window.confirm(
-        "Are you sure you want to cancel this session? All progress will be lost.",
+        "Are you sure you want to delete this session? All progress will be lost.",
       )
     ) {
       try {
         await deleteSession(token, sessionId);
-        setIsSessionEnded(true);
-        navigateAfterSessionEnd(navigate);
+        navigate("/", { replace: true });
       } catch (error) {
         console.error("Failed to delete session:", error);
-        setIsSessionEnded(true);
-        navigateAfterSessionEnd(navigate);
+        navigate("/", { replace: true });
       }
     }
   };
@@ -316,11 +305,11 @@ export default function CreateSession() {
       <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border">
         <div className="flex items-center justify-between px-4 h-16">
           <button
-            onClick={handleCancel}
-            className="flex items-center text-text-muted hover:text-text-main font-medium transition-colors"
+            onClick={handleDelete}
+            className="flex items-center text-red-500 hover:text-red-600 font-medium transition-colors"
           >
             <X size={20} className="mr-1" />
-            <span>Cancel</span>
+            <span>Delete</span>
           </button>
           <div className="flex flex-col items-center">
             <h1 className="text-lg font-bold">{sessionName}</h1>
