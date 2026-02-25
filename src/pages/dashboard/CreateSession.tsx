@@ -25,11 +25,47 @@ interface SessionExercise {
   sets: Set[];
 }
 
+const DRAFT_KEY = "asap_active_session";
+
+interface SessionDraft {
+  mode: "new" | "copy";
+  sessionId: number | null;
+  sessionName: string;
+  exercises: SessionExercise[];
+  selectedLabels: string[];
+  sessionStartTime: string;
+}
+
+function loadDraft(): SessionDraft | null {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as SessionDraft) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(draft: SessionDraft) {
+  sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+}
+
+function clearDraft() {
+  sessionStorage.removeItem(DRAFT_KEY);
+}
+
 export default function CreateSession() {
   const navigate = useNavigate();
   const location = useLocation();
   const { token } = useAuth();
-  const sessionStartTime = useRef<string>(new Date().toISOString());
+
+  // Always load draft — location.state survives Ctrl+R via browser history.state
+  // so we can't rely on its absence to detect a reload. Draft is only written
+  // for new/copy modes, so it is safe to always prefer it for those fields.
+  const draft = loadDraft();
+
+  const sessionStartTime = useRef<string>(
+    draft?.sessionStartTime ?? new Date().toISOString(),
+  );
 
   const AVAILABLE_LABELS = [
     "Chest",
@@ -46,33 +82,34 @@ export default function CreateSession() {
   ];
 
   const mode: "new" | "edit" | "resume" | "copy" =
-    location.state?.mode || "new";
+    location.state?.mode ?? draft?.mode ?? "new";
 
-  const [sessionName, setSessionName] = useState(
-    location.state?.sessionName || "Workout Session",
+  const [sessionName, setSessionName] = useState<string>(
+    location.state?.sessionName ?? draft?.sessionName ?? "Workout Session",
   );
-  const [exercises, setExercises] = useState<SessionExercise[]>(
-    mode === "copy" && location.state?.copyExercises
-      ? location.state.copyExercises.map(
-          (ex: {
-            exerciseId: string;
-            exercise: { id: string; name: string; category: string };
-            sets: { weight: number; reps: number; isHardSet: boolean }[];
-          }) => ({
-            id: ex.exercise?.id ?? ex.exerciseId,
-            name: ex.exercise?.name ?? "",
-            category: ex.exercise?.category ?? "",
-            sets: ex.sets.map((s) => ({
-              weight: s.weight.toString(),
-              reps: s.reps.toString(),
-              done: false,
-            })),
-          }),
-        )
-      : [],
-  );
+  const [exercises, setExercises] = useState<SessionExercise[]>(() => {
+    if (mode === "copy" && location.state?.copyExercises) {
+      return location.state.copyExercises.map(
+        (ex: {
+          exerciseId: string;
+          exercise: { id: string; name: string; category: string };
+          sets: { weight: number; reps: number; isHardSet: boolean }[];
+        }) => ({
+          id: ex.exercise?.id ?? ex.exerciseId,
+          name: ex.exercise?.name ?? "",
+          category: ex.exercise?.category ?? "",
+          sets: ex.sets.map((s) => ({
+            weight: s.weight.toString(),
+            reps: s.reps.toString(),
+            done: false,
+          })),
+        }),
+      );
+    }
+    return draft?.exercises ?? [];
+  });
   const [sessionId, setSessionId] = useState<number | null>(
-    location.state?.sessionId || null,
+    location.state?.sessionId ?? draft?.sessionId ?? null,
   );
   const [showAddExercise, setShowAddExercise] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -84,7 +121,7 @@ export default function CreateSession() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [originalEndTime, setOriginalEndTime] = useState<string | null>(null);
   const [selectedLabels, setSelectedLabels] = useState<string[]>(
-    location.state?.labels || [],
+    location.state?.labels ?? draft?.selectedLabels ?? [],
   );
 
   // For edit/resume: load existing session data
@@ -126,6 +163,19 @@ export default function CreateSession() {
       createInitialSession();
     }
   }, []);
+
+  // Persist draft to sessionStorage on every change (new/copy modes only)
+  useEffect(() => {
+    if (mode !== "new" && mode !== "copy") return;
+    saveDraft({
+      mode,
+      sessionId,
+      sessionName,
+      exercises,
+      selectedLabels,
+      sessionStartTime: sessionStartTime.current,
+    });
+  }, [mode, sessionId, sessionName, exercises, selectedLabels]);
 
   // Auto-save every 10 seconds if there are changes
   useEffect(() => {
@@ -297,6 +347,7 @@ export default function CreateSession() {
         exercises: exercisesPayload,
       });
 
+      clearDraft();
       navigate("/", { replace: true });
     } catch (error) {
       console.error("Failed to save session:", error);
@@ -315,15 +366,18 @@ export default function CreateSession() {
     ) {
       try {
         await deleteSession(token, sessionId);
+        clearDraft();
         navigate("/", { replace: true });
       } catch (error) {
         console.error("Failed to delete session:", error);
+        clearDraft();
         navigate("/", { replace: true });
       }
     }
   };
 
   const handleDiscard = () => {
+    clearDraft();
     navigate("/", { replace: true });
   };
   const toggleLabel = (label: string) => {
