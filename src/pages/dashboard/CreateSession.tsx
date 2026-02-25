@@ -58,9 +58,6 @@ export default function CreateSession() {
   const location = useLocation();
   const { token } = useAuth();
 
-  // Always load draft — location.state survives Ctrl+R via browser history.state
-  // so we can't rely on its absence to detect a reload. Draft is only written
-  // for new/copy modes, so it is safe to always prefer it for those fields.
   const draft = loadDraft();
 
   const sessionStartTime = useRef<string>(
@@ -85,9 +82,14 @@ export default function CreateSession() {
     location.state?.mode ?? draft?.mode ?? "new";
 
   const [sessionName, setSessionName] = useState<string>(
-    location.state?.sessionName ?? draft?.sessionName ?? "Workout Session",
+    draft?.sessionName ?? location.state?.sessionName ?? "Workout Session",
   );
   const [exercises, setExercises] = useState<SessionExercise[]>(() => {
+    // Draft always wins — it reflects the user's actual in-progress work.
+    // Only fall back to copyExercises for the very first load (no draft yet).
+    if (draft?.exercises?.length) {
+      return draft.exercises;
+    }
     if (mode === "copy" && location.state?.copyExercises) {
       return location.state.copyExercises.map(
         (ex: {
@@ -121,7 +123,7 @@ export default function CreateSession() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [originalEndTime, setOriginalEndTime] = useState<string | null>(null);
   const [selectedLabels, setSelectedLabels] = useState<string[]>(
-    location.state?.labels ?? draft?.selectedLabels ?? [],
+    draft?.selectedLabels ?? location.state?.labels ?? [],
   );
 
   // For edit/resume: load existing session data
