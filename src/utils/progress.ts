@@ -18,10 +18,13 @@ export interface MuscleData {
 }
 
 export interface PersonalBest {
+  id: number;
   exerciseId: string;
-  exercise: string;
-  weight: number;
-  date: string;
+  metric: string;
+  value: number;
+  achievedAt: string;
+  exercise: { id: string; name: string; category: string };
+  session: { id: number; sessionName: string; startTime: string } | null;
 }
 
 export type TimeRange = "1W" | "1M" | "3M" | "6M" | "1Y" | "ALL";
@@ -71,14 +74,34 @@ export const fetchMuscleDistribution = async (
 export const fetchPersonalBests = async (
   token: string | null,
   exerciseIds: string[],
+  metric?: string,
 ): Promise<PersonalBest[]> => {
   if (!token) throw new Error("No auth token provided");
   if (!exerciseIds || exerciseIds.length === 0) return [];
 
-  const idsParam = exerciseIds.join(",");
-  const response = await api.get(
-    `/progress/pbs?exerciseIds=${idsParam}`,
-    token,
-  );
+  const params = new URLSearchParams();
+  params.set("exerciseIds", exerciseIds.join(","));
+  if (metric) params.set("metric", metric);
+
+  const response = await api.get(`/pbs?${params.toString()}`, token);
   return response;
+};
+
+/**
+ * Delete all PB records for a specific exercise (called when untracking).
+ */
+export const deleteExercisePBs = async (
+  token: string | null,
+  exerciseId: string,
+): Promise<void> => {
+  if (!token) throw new Error("No auth token provided");
+  await api.delete(`/pbs/${exerciseId}`, token);
+};
+
+/**
+ * Trigger full PB recalculation from history (called when tracking a new exercise).
+ */
+export const syncPBs = async (token: string | null): Promise<void> => {
+  if (!token) throw new Error("No auth token provided");
+  await api.post("/pbs/sync", {}, token);
 };

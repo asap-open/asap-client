@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Target } from "lucide-react";
+import { Plus, Trash2, Target, Loader } from "lucide-react";
 import Modal from "../../ui/Modal";
 import AddExerciseModal from "../../session/AddExerciseModal";
+import { useAuth } from "../../../context/AuthContext";
+import { deleteExercisePBs, syncPBs } from "../../../utils/progress";
 
 interface ManageTrackedExercisesModalProps {
   isOpen: boolean;
@@ -17,6 +19,7 @@ export default function ManageTrackedExercisesModal({
   isOpen,
   onClose,
 }: ManageTrackedExercisesModalProps) {
+  const { token } = useAuth();
   const [trackedExercises, setTrackedExercises] = useState<TrackedExercise[]>(
     () => {
       const stored = localStorage.getItem("tracked_exercises");
@@ -24,23 +27,44 @@ export default function ManageTrackedExercisesModal({
     },
   );
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     localStorage.setItem("tracked_exercises", JSON.stringify(trackedExercises));
   }, [trackedExercises]);
 
-  const handleAddExercise = (exercise: { id: string; name: string }) => {
-    if (!trackedExercises.find((e) => e.id === exercise.id)) {
-      setTrackedExercises((prev) => [
-        ...prev,
-        { id: exercise.id, name: exercise.name },
-      ]);
+  const handleAddExercise = async (exercise: { id: string; name: string }) => {
+    if (trackedExercises.find((e) => e.id === exercise.id)) {
+      setIsAddModalOpen(false);
+      return;
     }
     setIsAddModalOpen(false);
+    setTrackedExercises((prev) => [
+      ...prev,
+      { id: exercise.id, name: exercise.name },
+    ]);
+    // Sync PBs from history so the progress widget has data immediately
+    try {
+      setIsSyncing(true);
+      await syncPBs(token);
+    } catch (err) {
+      console.error("Failed to sync PBs after adding exercise", err);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
-  const handleRemoveExercise = (id: string) => {
-    setTrackedExercises((prev) => prev.filter((item) => item.id !== id));
+  const handleRemoveExercise = async (id: string) => {
+    setLoadingId(id);
+    try {
+      await deleteExercisePBs(token, id);
+    } catch (err) {
+      console.error("Failed to delete PBs for exercise", err);
+    } finally {
+      setTrackedExercises((prev) => prev.filter((item) => item.id !== id));
+      setLoadingId(null);
+    }
   };
 
   return (
@@ -59,10 +83,20 @@ export default function ManageTrackedExercisesModal({
 
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-primary/30 text-primary font-bold rounded-xl hover:bg-primary/5 transition-colors"
+            disabled={isSyncing}
+            className="w-full flex items-center justify-center gap-2 py-3 border-2 border-dashed border-primary/30 text-primary font-bold rounded-xl hover:bg-primary/5 transition-colors disabled:opacity-50"
           >
-            <Plus size={20} />
-            Add Exercise to Track
+            {isSyncing ? (
+              <>
+                <Loader size={18} className="animate-spin" />
+                Syncing PBs…
+              </>
+            ) : (
+              <>
+                <Plus size={20} />
+                Add Exercise to Track
+              </>
+            )}
           </button>
 
           {trackedExercises.length === 0 ? (
@@ -87,9 +121,14 @@ export default function ManageTrackedExercisesModal({
                   </div>
                   <button
                     onClick={() => handleRemoveExercise(exercise.id)}
-                    className="p-2 text-text-muted hover:text-red-500 hover:bg-red-50 rounded transition-all"
+                    disabled={loadingId === exercise.id}
+                    className="p-2 text-text-muted hover:text-red-500 hover:bg-red-50 rounded transition-all disabled:opacity-50"
                   >
-                    <Trash2 size={16} />
+                    {loadingId === exercise.id ? (
+                      <Loader size={16} className="animate-spin" />
+                    ) : (
+                      <Trash2 size={16} />
+                    )}
                   </button>
                 </div>
               ))}

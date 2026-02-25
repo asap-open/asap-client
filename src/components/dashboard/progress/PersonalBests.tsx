@@ -34,8 +34,9 @@ export default function PersonalBests() {
       setLoading(true);
       try {
         const ids = trackedExercises.map((e) => e.id);
-        const data = await fetchPersonalBests(token, ids);
-        // Map by ID for easy lookup
+        // Fetch only MaxWeight PBs for the widget display
+        const data = await fetchPersonalBests(token, ids, "MaxWeight");
+        // Map by exerciseId for easy lookup
         const map: Record<string, PersonalBest> = {};
         data.forEach((pb) => {
           map[pb.exerciseId] = pb;
@@ -79,7 +80,7 @@ export default function PersonalBests() {
                   </p>
                   {pb ? (
                     <p className="text-xs text-text-muted mt-0.5">
-                      {new Date(pb.date).toLocaleDateString()}
+                      {new Date(pb.achievedAt).toLocaleDateString()}
                     </p>
                   ) : (
                     <p className="text-xs text-text-muted italic mt-0.5">
@@ -94,7 +95,7 @@ export default function PersonalBests() {
                       pb ? "text-primary" : "text-text-muted/30"
                     }`}
                   >
-                    {pb ? pb.weight : "--"}
+                    {pb ? pb.value : "--"}
                   </span>
                   <span className="text-xs text-text-muted ml-1">kg</span>
                 </div>
