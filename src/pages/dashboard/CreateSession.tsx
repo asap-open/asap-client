@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Plus, Save, X, Undo2 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
@@ -29,6 +29,7 @@ export default function CreateSession() {
   const navigate = useNavigate();
   const location = useLocation();
   const { token } = useAuth();
+  const sessionStartTime = useRef<string>(new Date().toISOString());
 
   const AVAILABLE_LABELS = [
     "Chest",
@@ -277,10 +278,9 @@ export default function CreateSession() {
 
       if (mode === "copy" && !targetId) {
         // Copy mode: create a shell session first to get an id, then update like every other mode
-        const now = new Date().toISOString();
         const created = await createSession(token, {
           sessionName,
-          startTime: now,
+          startTime: sessionStartTime.current,
           exercises: [],
         } as CreateSessionPayload);
         targetId = created.id;
