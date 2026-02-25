@@ -19,6 +19,56 @@
   --color-border: #f3f4f6;
 }
 
+/* Session set controls */
+.set-done-toggle {
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--color-border);
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  transition: all 160ms ease;
+}
+
+.set-done-toggle:hover {
+  border-color: var(--color-text-muted);
+}
+
+.set-done-toggle.checked {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(19, 236, 214, 0.18);
+}
+
+html.dark .set-done-toggle.checked {
+  box-shadow: 0 0 0 3px rgba(155, 223, 87, 0.18);
+}
+
+.set-remove-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ef4444;
+  border: 1px solid transparent;
+  transition: all 120ms ease;
+}
+
+.set-remove-btn:hover {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+html.dark .set-remove-btn:hover {
+  background: rgba(239, 68, 68, 0.12);
+}
+
 /* Global Reset */
 :root {
   color-scheme: light;

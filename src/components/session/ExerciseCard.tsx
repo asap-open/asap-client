@@ -87,7 +87,10 @@ export default function ExerciseCard({
         <div className="col-span-1 text-center">Set</div>
         <div className="col-span-4 text-center">Kgs</div>
         <div className="col-span-4 text-center">Reps</div>
-        <div className="col-span-3 text-center">Done</div>
+        <div className="col-span-3 flex items-center justify-center gap-2 text-center">
+          <span className="w-8 text-center">Done</span>
+          <span className="w-[30px] text-transparent select-none">x</span>
+        </div>
       </div>
 
       {/* Sets */}
@@ -122,18 +125,16 @@ export default function ExerciseCard({
                 }
               />
             </div>
-            <div className="col-span-3 flex justify-center items-center gap-1">
+            <div className="col-span-3 flex justify-center items-center gap-2">
               <button
                 onClick={() => onToggleSetDone(exerciseIndex, setIndex)}
-                className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-colors ${
-                  set.done
-                    ? "border-primary bg-primary"
-                    : "border-border hover:border-text-muted/50"
-                }`}
+                className={`set-done-toggle ${set.done ? "checked" : ""}`}
+                aria-pressed={set.done}
+                title={set.done ? "Mark as not done" : "Mark as done"}
               >
                 {set.done && (
                   <svg
-                    className="w-4 h-4 text-white"
+                    className="w-4 h-4"
                     fill="none"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -145,14 +146,15 @@ export default function ExerciseCard({
                   </svg>
                 )}
               </button>
-              {exercise.sets.length > 1 && (
-                <button
-                  onClick={() => onRemoveSet(exerciseIndex, setIndex)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 ml-1"
-                >
-                  <Trash2 size={14} />
-                </button>
-              )}
+              <button
+                onClick={() => onRemoveSet(exerciseIndex, setIndex)}
+                className={`set-remove-btn ${setIndex === 0 ? "invisible pointer-events-none" : ""}`}
+                title={
+                  setIndex === 0 ? "Cannot remove first set" : "Remove set"
+                }
+              >
+                <Trash2 size={14} />
+              </button>
             </div>
           </div>
         ))}
