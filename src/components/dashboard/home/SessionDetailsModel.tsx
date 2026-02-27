@@ -1,6 +1,6 @@
 import Modal from "../../ui/Modal";
 import type { WorkoutSession } from "../../../services/sessionService";
-import { Clock, Dumbbell, Calendar, Layers, Tag } from "lucide-react";
+import { Clock, Dumbbell, Calendar, Layers, Tag, Timer } from "lucide-react";
 
 interface SessionDetailsModalProps {
   isOpen: boolean;
@@ -103,6 +103,12 @@ export default function SessionDetailsModal({
                   {index + 1}
                 </span>
                 {item.exercise.name}
+                {item.isTimeBased && (
+                  <span className="inline-flex items-center gap-1 bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full text-xs font-semibold ml-1">
+                    <Timer size={10} />
+                    Time
+                  </span>
+                )}
               </h3>
               <div className="bg-surface-hover rounded-lg overflow-hidden border border-border">
                 <table className="w-full text-sm">
@@ -110,7 +116,9 @@ export default function SessionDetailsModal({
                     <tr>
                       <th className="py-2 px-3 text-left w-12">Set</th>
                       <th className="py-2 px-3 text-center">kg</th>
-                      <th className="py-2 px-3 text-center">Reps</th>
+                      <th className="py-2 px-3 text-center">
+                        {item.isTimeBased ? "Secs" : "Reps"}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -123,10 +131,10 @@ export default function SessionDetailsModal({
                           {setIndex + 1}
                         </td>
                         <td className="py-2 px-3 text-center font-bold text-text-main">
-                          {set.weight}
+                          {item.isTimeBased ? "—" : set.weight}
                         </td>
                         <td className="py-2 px-3 text-center font-medium text-text-main">
-                          {set.reps}
+                          {item.isTimeBased ? set.durationSec : set.reps}
                         </td>
                       </tr>
                     ))}
