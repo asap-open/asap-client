@@ -15,6 +15,7 @@ import AddExerciseModal from "../../components/session/AddExerciseModal";
 interface Set {
   weight: string;
   reps: string;
+  duration: string;
   done: boolean;
 }
 
@@ -22,6 +23,7 @@ interface SessionExercise {
   id: string;
   name: string;
   category: string;
+  isTimeBased: boolean;
   sets: Set[];
 }
 
@@ -94,15 +96,23 @@ export default function CreateSession() {
       return location.state.copyExercises.map(
         (ex: {
           exerciseId: string;
+          isTimeBased?: boolean;
           exercise: { id: string; name: string; category: string };
-          sets: { weight: number; reps: number; isHardSet: boolean }[];
+          sets: {
+            weight: number;
+            reps: number;
+            durationSec?: number | null;
+            isHardSet: boolean;
+          }[];
         }) => ({
           id: ex.exercise?.id ?? ex.exerciseId,
           name: ex.exercise?.name ?? "",
           category: ex.exercise?.category ?? "",
+          isTimeBased: ex.isTimeBased ?? false,
           sets: ex.sets.map((s) => ({
             weight: s.weight.toString(),
             reps: s.reps.toString(),
+            duration: s.durationSec != null ? s.durationSec.toString() : "",
             done: false,
           })),
         }),
@@ -141,9 +151,11 @@ export default function CreateSession() {
               id: ex.exercise.id ?? ex.exerciseId,
               name: ex.exercise.name,
               category: ex.exercise.category,
+              isTimeBased: ex.isTimeBased ?? false,
               sets: ex.sets.map((s) => ({
                 weight: s.weight.toString(),
                 reps: s.reps.toString(),
+                duration: s.durationSec != null ? s.durationSec.toString() : "",
                 done: s.isHardSet,
               })),
             })),
@@ -217,11 +229,13 @@ export default function CreateSession() {
         labels: selectedLabels,
         exercises: exercises.map((ex) => ({
           exerciseId: ex.id,
+          isTimeBased: ex.isTimeBased,
           sets: ex.sets
-            .filter((set) => set.weight && set.reps)
+            .filter((set) => (ex.isTimeBased ? set.duration : set.reps))
             .map((set) => ({
               weight: parseFloat(set.weight) || 0,
-              reps: parseInt(set.reps) || 0,
+              reps: ex.isTimeBased ? 0 : parseInt(set.reps) || 0,
+              durationSec: ex.isTimeBased ? parseInt(set.duration) || 0 : null,
               isHardSet: set.done,
             })),
         })),
@@ -239,6 +253,7 @@ export default function CreateSession() {
 
   const calculateTotalVolume = () => {
     return exercises.reduce((total, exercise) => {
+      if (exercise.isTimeBased) return total;
       const exerciseVolume = exercise.sets.reduce((sum, set) => {
         if (set.done && set.weight && set.reps) {
           return sum + parseFloat(set.weight) * parseFloat(set.reps);
@@ -256,9 +271,20 @@ export default function CreateSession() {
   }) => {
     const newExercise: SessionExercise = {
       ...exercise,
-      sets: [{ weight: "", reps: "", done: false }],
+      isTimeBased: false,
+      sets: [{ weight: "", reps: "", duration: "", done: false }],
     };
     setExercises([...exercises, newExercise]);
+    setHasUnsavedChanges(true);
+  };
+
+  const toggleTimeBased = (exerciseIndex: number) => {
+    const updatedExercises = [...exercises];
+    updatedExercises[exerciseIndex] = {
+      ...updatedExercises[exerciseIndex],
+      isTimeBased: !updatedExercises[exerciseIndex].isTimeBased,
+    };
+    setExercises(updatedExercises);
     setHasUnsavedChanges(true);
   };
 
@@ -276,6 +302,7 @@ export default function CreateSession() {
     updatedExercises[exerciseIndex].sets.push({
       weight: lastSet?.weight || "",
       reps: lastSet?.reps || "",
+      duration: lastSet?.duration || "",
       done: false,
     });
     setExercises(updatedExercises);
@@ -302,7 +329,7 @@ export default function CreateSession() {
   const updateSet = (
     exerciseIndex: number,
     setIndex: number,
-    field: "weight" | "reps",
+    field: "weight" | "reps" | "duration",
     value: string,
   ) => {
     const updatedExercises = [...exercises];
@@ -317,11 +344,13 @@ export default function CreateSession() {
 
       const exercisesPayload = exercises.map((ex) => ({
         exerciseId: ex.id,
+        isTimeBased: ex.isTimeBased,
         sets: ex.sets
-          .filter((set) => set.weight && set.reps)
+          .filter((set) => (ex.isTimeBased ? set.duration : set.reps))
           .map((set) => ({
             weight: parseFloat(set.weight) || 0,
-            reps: parseInt(set.reps) || 0,
+            reps: ex.isTimeBased ? 0 : parseInt(set.reps) || 0,
+            durationSec: ex.isTimeBased ? parseInt(set.duration) || 0 : null,
             isHardSet: set.done,
           })),
       }));
@@ -480,6 +509,7 @@ export default function CreateSession() {
               onUpdateSet={updateSet}
               onRemoveExercise={removeExercise}
               onRemoveSet={removeSet}
+              onToggleTimeBased={toggleTimeBased}
             />
           ))}
 

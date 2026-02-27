@@ -1,9 +1,10 @@
-import { MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { MoreHorizontal, Plus, Trash2, Timer, Hash } from "lucide-react";
 import { useState } from "react";
 
 interface Set {
   weight: string;
   reps: string;
+  duration: string;
   done: boolean;
 }
 
@@ -12,6 +13,7 @@ interface ExerciseCardProps {
     id: string;
     name: string;
     category: string;
+    isTimeBased: boolean;
     sets: Set[];
   };
   exerciseIndex: number;
@@ -20,11 +22,12 @@ interface ExerciseCardProps {
   onUpdateSet: (
     exerciseIndex: number,
     setIndex: number,
-    field: "weight" | "reps",
+    field: "weight" | "reps" | "duration",
     value: string,
   ) => void;
   onRemoveExercise: (exerciseIndex: number) => void;
   onRemoveSet: (exerciseIndex: number, setIndex: number) => void;
+  onToggleTimeBased: (exerciseIndex: number) => void;
 }
 
 export default function ExerciseCard({
@@ -35,17 +38,27 @@ export default function ExerciseCard({
   onUpdateSet,
   onRemoveExercise,
   onRemoveSet,
+  onToggleTimeBased,
 }: ExerciseCardProps) {
   const [showMenu, setShowMenu] = useState(false);
+  const { isTimeBased } = exercise;
 
   return (
     <div className="bg-surface rounded-2xl p-4 shadow-sm border border-border relative">
       {/* Exercise Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex flex-col">
-          <h3 className="text-lg font-bold text-primary-hover">
-            {exercise.name}
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-bold text-primary-hover">
+              {exercise.name}
+            </h3>
+            {isTimeBased && (
+              <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                <Timer size={10} />
+                Time
+              </span>
+            )}
+          </div>
           <span className="text-xs text-text-muted uppercase font-semibold tracking-wider">
             {exercise.category}
           </span>
@@ -65,7 +78,28 @@ export default function ExerciseCard({
                 className="fixed inset-0 z-10"
                 onClick={() => setShowMenu(false)}
               />
-              <div className="absolute right-0 top-8 z-20 bg-surface rounded-xl shadow-lg border border-border py-2 min-w-[160px]">
+              <div className="absolute right-0 top-8 z-20 bg-surface rounded-xl shadow-lg border border-border py-2 min-w-[180px]">
+                {/* Toggle time/reps mode */}
+                <button
+                  onClick={() => {
+                    onToggleTimeBased(exerciseIndex);
+                    setShowMenu(false);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm text-text-main hover:bg-surface-hover flex items-center gap-2"
+                >
+                  {isTimeBased ? (
+                    <>
+                      <Hash size={16} className="text-primary" />
+                      Switch to Reps
+                    </>
+                  ) : (
+                    <>
+                      <Timer size={16} className="text-amber-500" />
+                      Switch to Time
+                    </>
+                  )}
+                </button>
+                <div className="border-t border-border my-1" />
                 <button
                   onClick={() => {
                     onRemoveExercise(exerciseIndex);
@@ -86,7 +120,9 @@ export default function ExerciseCard({
       <div className="grid grid-cols-12 gap-2 text-[10px] font-bold text-text-muted uppercase tracking-widest mb-2 px-2">
         <div className="col-span-1 text-center">Set</div>
         <div className="col-span-4 text-center">Kgs</div>
-        <div className="col-span-4 text-center">Reps</div>
+        <div className="col-span-4 text-center">
+          {isTimeBased ? "Secs" : "Reps"}
+        </div>
         <div className="col-span-3 flex items-center justify-center gap-2 text-center">
           <span className="w-8 text-center">Done</span>
           <span className="w-[30px] text-transparent select-none">x</span>
@@ -115,15 +151,32 @@ export default function ExerciseCard({
               />
             </div>
             <div className="col-span-4">
-              <input
-                className="w-full text-center bg-transparent border-none p-0 focus:ring-0 placeholder:text-text-muted/50 text-text-main"
-                placeholder="10"
-                type="number"
-                value={set.reps}
-                onChange={(e) =>
-                  onUpdateSet(exerciseIndex, setIndex, "reps", e.target.value)
-                }
-              />
+              {isTimeBased ? (
+                <input
+                  className="w-full text-center bg-transparent border-none p-0 focus:ring-0 placeholder:text-text-muted/50 text-amber-500 font-semibold"
+                  placeholder="30"
+                  type="number"
+                  value={set.duration}
+                  onChange={(e) =>
+                    onUpdateSet(
+                      exerciseIndex,
+                      setIndex,
+                      "duration",
+                      e.target.value,
+                    )
+                  }
+                />
+              ) : (
+                <input
+                  className="w-full text-center bg-transparent border-none p-0 focus:ring-0 placeholder:text-text-muted/50 text-text-main"
+                  placeholder="10"
+                  type="number"
+                  value={set.reps}
+                  onChange={(e) =>
+                    onUpdateSet(exerciseIndex, setIndex, "reps", e.target.value)
+                  }
+                />
+              )}
             </div>
             <div className="col-span-3 flex justify-center items-center gap-2">
               <button

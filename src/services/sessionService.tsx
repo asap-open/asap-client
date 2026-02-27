@@ -16,9 +16,11 @@ export interface WorkoutSession {
   stats: SessionStats;
   exercises: Array<{
     exerciseId: string;
+    isTimeBased: boolean;
     sets: Array<{
       weight: number;
       reps: number;
+      durationSec: number | null;
       completed: boolean;
       isHardSet: boolean;
     }>;
