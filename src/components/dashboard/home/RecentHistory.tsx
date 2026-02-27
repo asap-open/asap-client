@@ -9,6 +9,8 @@ import LoadingScreen from "../../ui/Loading";
 import SessionList from "./SessionList";
 import EmptyState from "./EmptyState";
 
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
+
 interface RecentHistoryProps {
   filter?: "today" | "week" | "month";
 }
@@ -23,17 +25,42 @@ export default function RecentHistory({ filter }: RecentHistoryProps) {
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [total, setTotal] = useState(0);
 
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  // When filter or pageSize changes, reset to page 1 and fetch directly
   useEffect(() => {
-    fetchSessions();
-  }, [filter, token]);
+    if (!token) return;
+    setPage(1);
+    fetchSessions(1, pageSize);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, filter, pageSize]);
 
-  const fetchSessions = async () => {
+  // When only the page changes (prev/next navigation), fetch that page
+  useEffect(() => {
+    if (!token || page === 1) return;
+    fetchSessions(page, pageSize);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
+
+  const fetchSessions = async (
+    currentPage: number,
+    currentPageSize: number,
+  ) => {
     if (!token) return;
     try {
       setLoading(true);
-      const data = await sessionService.getSessions(token, filter, 10);
-      setSessions(data);
+      const result = await sessionService.getSessions(
+        token,
+        filter,
+        currentPageSize,
+        currentPage,
+      );
+      setSessions(result.data);
+      setTotal(result.pagination.total);
     } catch (error) {
       console.error("Error fetching sessions:", error);
     } finally {
@@ -103,7 +130,16 @@ export default function RecentHistory({ filter }: RecentHistoryProps) {
     try {
       setDeletingId(sessionId);
       await deleteSession(token, sessionId);
-      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      // If last item on page > 1, go back a page
+      const newTotal = total - 1;
+      const newTotalPages = Math.max(1, Math.ceil(newTotal / pageSize));
+      const targetPage = page > newTotalPages ? newTotalPages : page;
+      setTotal(newTotal);
+      if (targetPage !== page) {
+        setPage(targetPage);
+      } else {
+        fetchSessions(targetPage, pageSize);
+      }
     } catch (error) {
       console.error("Error deleting session:", error);
       alert("Failed to delete session. Please try again.");
@@ -116,12 +152,35 @@ export default function RecentHistory({ filter }: RecentHistoryProps) {
     return <LoadingScreen />;
   }
 
-  if (sessions.length === 0) {
+  if (sessions.length === 0 && page === 1) {
     return <EmptyState />;
   }
 
   return (
     <>
+      {/* Pagination controls - top */}
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <div className="flex items-center gap-2 text-sm text-text-muted">
+          <span>Per page:</span>
+          <select
+            className="bg-surface border border-border rounded-md px-2 py-1 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary"
+            value={pageSize}
+            onChange={(e) => setPageSize(Number(e.target.value))}
+          >
+            {PAGE_SIZE_OPTIONS.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </div>
+        <span className="text-sm text-text-muted">
+          {total > 0
+            ? `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} of ${total}`
+            : "No results"}
+        </span>
+      </div>
+
       <SessionList
         sessions={sessions}
         deletingId={deletingId}
@@ -132,6 +191,29 @@ export default function RecentHistory({ filter }: RecentHistoryProps) {
         onRename={handleRename}
         onCopy={handleCopy}
       />
+
+      {/* Pagination controls - bottom */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 pt-4">
+          <button
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-surface border border-border text-text disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/10 hover:text-primary transition-colors"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
+            ← Prev
+          </button>
+          <span className="text-sm text-text-muted">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-surface border border-border text-text disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/10 hover:text-primary transition-colors"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+          >
+            Next →
+          </button>
+        </div>
+      )}
 
       <SessionDetailsModal
         isOpen={isModalOpen}

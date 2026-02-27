@@ -27,6 +27,8 @@ interface ExerciseListProps {
   search?: string;
 }
 
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+
 export default function ExerciseList({
   filters = {},
   search = "",
@@ -40,13 +42,22 @@ export default function ExerciseList({
   const [deletingExercise, setDeletingExercise] = useState<Exercise | null>(
     null,
   );
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [total, setTotal] = useState(0);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   // Fetch Exercises
-  const fetchExercises = async () => {
+  const fetchExercises = async (
+    currentPage: number,
+    currentPageSize: number,
+  ) => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
-      params.append("limit", "50");
+      params.append("limit", String(currentPageSize));
+      params.append("offset", String((currentPage - 1) * currentPageSize));
 
       if (filters.muscle) params.append("muscle", filters.muscle);
       if (filters.category) params.append("category", filters.category);
@@ -58,29 +69,47 @@ export default function ExerciseList({
         token,
       );
 
-      // The search endpoint returns { data: Exercise[], meta: ... }
-      // api.get returns the parsed body, so response.data is the array
+      // The search endpoint returns { data: Exercise[], meta: { total, ... } }
       if (response && Array.isArray(response.data)) {
         setExercises(response.data);
+        setTotal(response.meta?.total ?? response.data.length);
       } else if (Array.isArray(response)) {
         setExercises(response);
+        setTotal(response.length);
       } else {
         setExercises([]);
+        setTotal(0);
       }
     } catch (error) {
       console.error("Failed to fetch exercises:", error);
       setExercises([]);
+      setTotal(0);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // When filters/search/pageSize change, reset to page 1 and fetch page 1 directly
   useEffect(() => {
-    if (token) {
-      fetchExercises();
-    }
+    if (!token) return;
+    setPage(1);
+    fetchExercises(1, pageSize);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, filters.muscle, filters.category, filters.equipment, search]);
+  }, [
+    token,
+    filters.muscle,
+    filters.category,
+    filters.equipment,
+    search,
+    pageSize,
+  ]);
+
+  // When only the page number changes (prev/next navigation), fetch that page
+  useEffect(() => {
+    if (!token || page === 1) return;
+    fetchExercises(page, pageSize);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
   // Close menu when clicking anywhere else on the page
   useEffect(() => {
@@ -123,7 +152,7 @@ export default function ExerciseList({
     if (!deletingExercise || !token) return;
     try {
       await api.delete(`/exercises/${deletingExercise.id}`, token);
-      fetchExercises(); // Refresh list
+      fetchExercises(page, pageSize); // Refresh list
     } catch (error) {
       console.error("Failed to delete exercise", error);
       alert("Failed to delete exercise.");
@@ -140,6 +169,29 @@ export default function ExerciseList({
 
   return (
     <div className="flex-1 px-6 py-6 pb-32 space-y-4">
+      {/* Pagination controls - top */}
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-2">
+        <div className="flex items-center gap-2 text-sm text-text-muted">
+          <span>Per page:</span>
+          <select
+            className="bg-surface border border-border rounded-md px-2 py-1 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary"
+            value={pageSize}
+            onChange={(e) => setPageSize(Number(e.target.value))}
+          >
+            {PAGE_SIZE_OPTIONS.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </div>
+        <span className="text-sm text-text-muted">
+          {total > 0
+            ? `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} of ${total}`
+            : "No results"}
+        </span>
+      </div>
+
       {exercises.length === 0 ? (
         <div className="text-center p-8 text-text-muted">
           No exercises found.
@@ -165,6 +217,29 @@ export default function ExerciseList({
         ))
       )}
 
+      {/* Pagination controls - bottom */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 pt-4">
+          <button
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-surface border border-border text-text disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/10 hover:text-primary transition-colors"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+          >
+            ← Prev
+          </button>
+          <span className="text-sm text-text-muted">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-surface border border-border text-text disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/10 hover:text-primary transition-colors"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+          >
+            Next →
+          </button>
+        </div>
+      )}
+
       {/* Modals */}
       <CreateExerciseModal
         isOpen={!!editingExercise}
@@ -183,7 +258,7 @@ export default function ExerciseList({
             : null
         }
         onSuccess={() => {
-          fetchExercises();
+          fetchExercises(page, pageSize);
         }}
       />
 

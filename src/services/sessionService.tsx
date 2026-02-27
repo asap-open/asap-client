@@ -30,17 +30,39 @@ export interface WorkoutSession {
   }>;
 }
 
+export interface SessionPagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface SessionsResult {
+  data: WorkoutSession[];
+  pagination: SessionPagination;
+}
+
 export const sessionService = {
   getSessions: async (
     token: string,
     filter?: string,
     limit: number = 10,
-  ): Promise<WorkoutSession[]> => {
-    const filterQuery = filter
-      ? `?filter=${filter}&limit=${limit}`
-      : `?limit=${limit}`;
-    const response = await api.get(`/sessions${filterQuery}`, token);
-    return response.data || [];
+    page: number = 1,
+  ): Promise<SessionsResult> => {
+    const params = new URLSearchParams();
+    if (filter) params.set("filter", filter);
+    params.set("limit", String(limit));
+    params.set("page", String(page));
+    const response = await api.get(`/sessions?${params.toString()}`, token);
+    return {
+      data: response.data || [],
+      pagination: response.pagination ?? {
+        total: (response.data || []).length,
+        page,
+        limit,
+        totalPages: 1,
+      },
+    };
   },
 
   getSessionById: async (

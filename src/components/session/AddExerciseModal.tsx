@@ -19,6 +19,8 @@ interface AddExerciseModalProps {
   onAddExercise: (exercise: Exercise) => void;
 }
 
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
 export default function AddExerciseModal({
   isOpen,
   onClose,
@@ -28,23 +30,39 @@ export default function AddExerciseModal({
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [total, setTotal] = useState(0);
 
-  // New unified filters state
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
   const [filters, setFilters] = useState({
     muscle: "",
     category: "",
     equipment: "",
   });
 
-  // Fetch exercises when modal opens or search/filters change
+  // Reset to page 1 when search/filters/pageSize change, then fetch
   useEffect(() => {
     if (isOpen) {
-      fetchExercises();
+      setPage(1);
+      fetchExercises(1, pageSize);
     }
     // eslint-disable-next-line
-  }, [isOpen, searchQuery, filters]);
+  }, [isOpen, searchQuery, filters, pageSize]);
 
-  const fetchExercises = async () => {
+  // Fetch when page changes via prev/next
+  useEffect(() => {
+    if (isOpen && page > 1) {
+      fetchExercises(page, pageSize);
+    }
+    // eslint-disable-next-line
+  }, [page]);
+
+  const fetchExercises = async (
+    currentPage: number,
+    currentPageSize: number,
+  ) => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -53,17 +71,25 @@ export default function AddExerciseModal({
       if (filters.muscle) params.append("muscle", filters.muscle);
       if (filters.category) params.append("category", filters.category);
       if (filters.equipment) params.append("equipment", filters.equipment);
+      params.append("limit", String(currentPageSize));
+      params.append("offset", String((currentPage - 1) * currentPageSize));
 
       const response = await api.get(
         `/exercises/search?${params.toString()}`,
         token,
       );
 
-      // Handle the API response
-      const results = response.data || response;
-      setExercises(Array.isArray(results) ? results : []);
-    } catch (error) {
+      if (response && Array.isArray(response.data)) {
+        setExercises(response.data);
+        setTotal(response.meta?.total ?? response.data.length);
+      } else {
+        const results = Array.isArray(response) ? response : [];
+        setExercises(results);
+        setTotal(results.length);
+      }
+    } catch {
       setExercises([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -74,6 +100,7 @@ export default function AddExerciseModal({
     onClose();
     setSearchQuery("");
     setFilters({ muscle: "", category: "", equipment: "" });
+    setPage(1);
   };
 
   return (
@@ -91,7 +118,6 @@ export default function AddExerciseModal({
             <SearchBar value={searchQuery} onChange={setSearchQuery} />
           </div>
 
-          {/* Replaces the old chips with the full filter component */}
           <div className="-mx-4 md:mx-0">
             <ExerciseFilters
               filters={filters}
@@ -104,6 +130,29 @@ export default function AddExerciseModal({
 
         {/* Exercise List */}
         <div className="flex-1 overflow-y-auto py-2 px-4 md:px-0">
+          {/* Top pagination bar */}
+          <div className="flex flex-wrap items-center justify-between gap-2 py-2">
+            <div className="flex items-center gap-2 text-sm text-text-muted">
+              <span>Per page:</span>
+              <select
+                className="bg-surface border border-border rounded-md px-2 py-1 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary"
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+              >
+                {PAGE_SIZE_OPTIONS.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <span className="text-xs text-text-muted">
+              {total > 0
+                ? `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} of ${total}`
+                : "No results"}
+            </span>
+          </div>
+
           {loading ? (
             <div className="flex items-center justify-center py-8 text-text-muted gap-2">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
@@ -114,7 +163,7 @@ export default function AddExerciseModal({
               No exercises found
             </div>
           ) : (
-            <div className="space-y-2 pb-4 pt-2">
+            <div className="space-y-2 pb-2 pt-1">
               {exercises.map((exercise) => (
                 <button
                   key={exercise.id}
@@ -135,6 +184,29 @@ export default function AddExerciseModal({
                   </div>
                 </button>
               ))}
+            </div>
+          )}
+
+          {/* Bottom pagination controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-3 py-3 border-t border-border mt-2">
+              <button
+                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-surface border border-border text-text disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/10 hover:text-primary transition-colors"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                ← Prev
+              </button>
+              <span className="text-sm text-text-muted">
+                {page} / {totalPages}
+              </span>
+              <button
+                className="px-3 py-1.5 rounded-lg text-sm font-medium bg-surface border border-border text-text disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/10 hover:text-primary transition-colors"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                Next →
+              </button>
             </div>
           )}
         </div>
