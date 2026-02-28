@@ -89,11 +89,16 @@ export default function ExerciseList({
     }
   };
 
-  // When filters/search/pageSize change, reset to page 1 and fetch page 1 directly
+  // When filters/search/pageSize change, reset to page 1.
+  // If already on page 1 setPage is a no-op so we fetch directly;
+  // otherwise setting page triggers the navigation effect below.
   useEffect(() => {
     if (!token) return;
-    setPage(1);
-    fetchExercises(1, pageSize);
+    if (page !== 1) {
+      setPage(1);
+    } else {
+      fetchExercises(1, pageSize);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     token,
@@ -104,9 +109,9 @@ export default function ExerciseList({
     pageSize,
   ]);
 
-  // When only the page number changes (prev/next navigation), fetch that page
+  // Fetch whenever the page number changes (includes navigating back to page 1)
   useEffect(() => {
-    if (!token || page === 1) return;
+    if (!token) return;
     fetchExercises(page, pageSize);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);

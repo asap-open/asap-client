@@ -31,17 +31,22 @@ export default function RecentHistory({ filter }: RecentHistoryProps) {
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  // When filter or pageSize changes, reset to page 1 and fetch directly
+  // When filter or pageSize changes, reset to page 1.
+  // If already on page 1 setPage is a no-op so we fetch directly;
+  // otherwise setting page triggers the navigation effect below.
   useEffect(() => {
     if (!token) return;
-    setPage(1);
-    fetchSessions(1, pageSize);
+    if (page !== 1) {
+      setPage(1);
+    } else {
+      fetchSessions(1, pageSize);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, filter, pageSize]);
 
-  // When only the page changes (prev/next navigation), fetch that page
+  // Fetch whenever the page number changes (includes navigating back to page 1)
   useEffect(() => {
-    if (!token || page === 1) return;
+    if (!token) return;
     fetchSessions(page, pageSize);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);

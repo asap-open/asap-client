@@ -42,18 +42,23 @@ export default function AddExerciseModal({
     equipment: "",
   });
 
-  // Reset to page 1 when search/filters/pageSize change, then fetch
+  // When search/filters/pageSize change, reset to page 1.
+  // If already on page 1 setPage is a no-op so we fetch directly;
+  // otherwise setting page triggers the navigation effect below.
   useEffect(() => {
     if (isOpen) {
-      setPage(1);
-      fetchExercises(1, pageSize);
+      if (page !== 1) {
+        setPage(1);
+      } else {
+        fetchExercises(1, pageSize);
+      }
     }
     // eslint-disable-next-line
   }, [isOpen, searchQuery, filters, pageSize]);
 
-  // Fetch when page changes via prev/next
+  // Fetch whenever the page number changes (includes navigating back to page 1)
   useEffect(() => {
-    if (isOpen && page > 1) {
+    if (isOpen) {
       fetchExercises(page, pageSize);
     }
     // eslint-disable-next-line
