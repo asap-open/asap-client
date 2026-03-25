@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../../../utils/api";
 import { useAuth } from "../../../context/AuthContext";
+import type { ExerciseCacheItem } from "../../../utils/exercises";
 import ExerciseItem from "../../ui/exercises/ExerciseItem";
 import CreateExerciseModal from "../../ui/exercises/modals/CreateExerciseModal";
 import ExerciseDetailsModal from "../../ui/exercises/modals/ExerciseDetailsModal";
@@ -17,6 +18,7 @@ interface Exercise {
   name: string;
   category: string;
   equipment: string;
+  isBodyweightExercise: boolean;
   primaryMuscles: string[];
   secondaryMuscles?: string[];
   instructions?: string;
@@ -41,7 +43,9 @@ export default function ExerciseList({
 }: ExerciseListProps) {
   const { token, exerciseCacheRevision, refreshExerciseCache } = useAuth();
   const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [cachedExercises, setCachedExercises] = useState<Exercise[]>([]);
+  const [cachedExercises, setCachedExercises] = useState<ExerciseCacheItem[]>(
+    [],
+  );
   const [isLoading, setIsLoading] = useState(USE_CLIENT_EXERCISE_SEARCH);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
@@ -86,10 +90,10 @@ export default function ExerciseList({
 
     setIsLoading(true);
 
-    let data = getExerciseCache(userId) as Exercise[];
+    let data = getExerciseCache(userId);
     if (data.length === 0) {
       await refreshExerciseCache();
-      data = getExerciseCache(userId) as Exercise[];
+      data = getExerciseCache(userId);
     }
 
     setCachedExercises(data);

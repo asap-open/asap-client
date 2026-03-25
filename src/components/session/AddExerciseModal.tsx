@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { api } from "../../utils/api";
+import type { ExerciseCacheItem } from "../../utils/exercises";
 import { useAuth } from "../../context/AuthContext";
 import SearchBar from "../dashboard/exercises/SearchBar";
 import Modal from "../ui/Modal";
@@ -35,12 +36,20 @@ export default function AddExerciseModal({
 }: AddExerciseModalProps) {
   const { token, exerciseCacheRevision, refreshExerciseCache } = useAuth();
   const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [cachedExercises, setCachedExercises] = useState<Exercise[]>([]);
+  const [cachedExercises, setCachedExercises] = useState<ExerciseCacheItem[]>(
+    [],
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(USE_CLIENT_EXERCISE_SEARCH);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
+
+  const [filters, setFilters] = useState({
+    muscle: "",
+    category: "",
+    equipment: "",
+  });
 
   const localSearch = useExerciseSearch({
     exercises: cachedExercises,
@@ -59,12 +68,6 @@ export default function AddExerciseModal({
     ? localSearch.totalPages
     : Math.max(1, Math.ceil(total / pageSize));
 
-  const [filters, setFilters] = useState({
-    muscle: "",
-    category: "",
-    equipment: "",
-  });
-
   const loadCachedExercises = async () => {
     if (!token) {
       setCachedExercises([]);
@@ -80,10 +83,10 @@ export default function AddExerciseModal({
     }
 
     setLoading(true);
-    let data = getExerciseCache(userId) as Exercise[];
+    let data = getExerciseCache(userId);
     if (data.length === 0) {
       await refreshExerciseCache();
-      data = getExerciseCache(userId) as Exercise[];
+      data = getExerciseCache(userId);
     }
 
     setCachedExercises(data);
