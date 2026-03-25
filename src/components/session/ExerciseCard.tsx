@@ -2,6 +2,7 @@ import { MoreHorizontal, Plus, Trash2, Timer, Hash } from "lucide-react";
 import { useState } from "react";
 
 interface Set {
+  setId: string;
   weight: string;
   reps: string;
   duration: string;
@@ -28,6 +29,7 @@ interface ExerciseCardProps {
   onRemoveExercise: (exerciseIndex: number) => void;
   onRemoveSet: (exerciseIndex: number, setIndex: number) => void;
   onToggleTimeBased: (exerciseIndex: number) => void;
+  onOpenSetTimerModal: (exerciseIndex: number, setIndex: number) => void;
 }
 
 export default function ExerciseCard({
@@ -39,6 +41,7 @@ export default function ExerciseCard({
   onRemoveExercise,
   onRemoveSet,
   onToggleTimeBased,
+  onOpenSetTimerModal,
 }: ExerciseCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const { isTimeBased } = exercise;
@@ -124,7 +127,9 @@ export default function ExerciseCard({
           {isTimeBased ? "Secs" : "Reps"}
         </div>
         <div className="col-span-3 flex items-center justify-center gap-2 text-center">
-          <span className="w-8 text-center">Done</span>
+          <span className="w-8 text-center">
+            {isTimeBased ? "Timer" : "Done"}
+          </span>
           <span className="w-[30px] text-transparent select-none">x</span>
         </div>
       </div>
@@ -133,7 +138,7 @@ export default function ExerciseCard({
       <div className="space-y-2">
         {exercise.sets.map((set, setIndex) => (
           <div
-            key={setIndex}
+            key={set.setId}
             className="grid grid-cols-12 gap-2 items-center bg-surface-hover rounded-lg p-2 group"
           >
             <div className="col-span-1 text-center text-sm font-semibold">
@@ -141,7 +146,7 @@ export default function ExerciseCard({
             </div>
             <div className="col-span-4">
               <input
-                className="w-full text-center bg-transparent border-none p-0 focus:ring-0 placeholder:text-text-muted/50 text-text-main"
+                className="no-number-spinner w-full text-center bg-transparent border-none p-0 focus:ring-0 placeholder:text-text-muted/50 text-text-main"
                 placeholder="60"
                 type="number"
                 value={set.weight}
@@ -153,7 +158,7 @@ export default function ExerciseCard({
             <div className="col-span-4">
               {isTimeBased ? (
                 <input
-                  className="w-full text-center bg-transparent border-none p-0 focus:ring-0 placeholder:text-text-muted/50 text-amber-500 font-semibold"
+                  className="no-number-spinner w-full text-center bg-transparent border-none p-0 focus:ring-0 placeholder:text-text-muted/50 text-amber-500 font-semibold"
                   placeholder="30"
                   type="number"
                   value={set.duration}
@@ -168,7 +173,7 @@ export default function ExerciseCard({
                 />
               ) : (
                 <input
-                  className="w-full text-center bg-transparent border-none p-0 focus:ring-0 placeholder:text-text-muted/50 text-text-main"
+                  className="no-number-spinner w-full text-center bg-transparent border-none p-0 focus:ring-0 placeholder:text-text-muted/50 text-text-main"
                   placeholder="10"
                   type="number"
                   value={set.reps}
@@ -179,35 +184,53 @@ export default function ExerciseCard({
               )}
             </div>
             <div className="col-span-3 flex justify-center items-center gap-2">
-              <button
-                onClick={() => onToggleSetDone(exerciseIndex, setIndex)}
-                className={`set-done-toggle ${set.done ? "checked" : ""}`}
-                aria-pressed={set.done}
-                title={set.done ? "Mark as not done" : "Mark as done"}
-              >
-                {set.done && (
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="3"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
+              <div className="w-8 flex justify-center">
+                {isTimeBased ? (
+                  <button
+                    type="button"
+                    onClick={() => onOpenSetTimerModal(exerciseIndex, setIndex)}
+                    className="h-8 w-8 rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 flex items-center justify-center"
+                    title="Open timer"
+                    aria-label="Open timer"
                   >
-                    <path d="M5 13l4 4L19 7"></path>
-                  </svg>
+                    <Timer size={14} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => onToggleSetDone(exerciseIndex, setIndex)}
+                    className={`set-done-toggle ${set.done ? "checked" : ""}`}
+                    aria-pressed={set.done}
+                    title={set.done ? "Mark as not done" : "Mark as done"}
+                  >
+                    {set.done && (
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="3"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    )}
+                  </button>
                 )}
-              </button>
-              <button
-                onClick={() => onRemoveSet(exerciseIndex, setIndex)}
-                className={`set-remove-btn ${setIndex === 0 ? "invisible pointer-events-none" : ""}`}
-                title={
-                  setIndex === 0 ? "Cannot remove first set" : "Remove set"
-                }
-              >
-                <Trash2 size={14} />
-              </button>
+              </div>
+              <div className="w-[30px] flex justify-center">
+                <button
+                  onClick={() => onRemoveSet(exerciseIndex, setIndex)}
+                  className={`set-remove-btn ${
+                    setIndex === 0 ? "invisible pointer-events-none" : ""
+                  }`}
+                  title={
+                    setIndex === 0 ? "Cannot remove first set" : "Remove set"
+                  }
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
             </div>
           </div>
         ))}

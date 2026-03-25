@@ -11,12 +11,25 @@ import {
 import { sessionService } from "../../services/sessionService";
 import ExerciseCard from "../../components/session/ExerciseCard";
 import AddExerciseModal from "../../components/session/AddExerciseModal";
+import SetTimerModal from "../../components/session/SetTimerModal";
 
 interface Set {
+  setId: string;
   weight: string;
   reps: string;
   duration: string;
   done: boolean;
+}
+
+interface SetTimerState {
+  elapsedMs: number;
+  runningSinceMs: number | null;
+}
+
+interface TimerModalTarget {
+  exerciseIndex: number;
+  setIndex: number;
+  setId: string;
 }
 
 interface SessionExercise {
@@ -36,6 +49,36 @@ interface SessionDraft {
   exercises: SessionExercise[];
   selectedLabels: string[];
   sessionStartTime: string;
+}
+
+function createSetId(): string {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function createSet(values?: Partial<Omit<Set, "setId">>): Set {
+  return {
+    setId: createSetId(),
+    weight: values?.weight ?? "",
+    reps: values?.reps ?? "",
+    duration: values?.duration ?? "",
+    done: values?.done ?? false,
+  };
+}
+
+function normalizeExercises(exercises: SessionExercise[]): SessionExercise[] {
+  return exercises.map((exercise) => ({
+    ...exercise,
+    sets: exercise.sets.map((set) => ({
+      ...set,
+      setId: set.setId ?? createSetId(),
+    })),
+  }));
 }
 
 function loadDraft(): SessionDraft | null {
@@ -90,7 +133,7 @@ export default function CreateSession() {
     // Draft always wins — it reflects the user's actual in-progress work.
     // Only fall back to copyExercises for the very first load (no draft yet).
     if (draft?.exercises?.length) {
-      return draft.exercises;
+      return normalizeExercises(draft.exercises);
     }
     if (mode === "copy" && location.state?.copyExercises) {
       return location.state.copyExercises.map(
@@ -109,16 +152,18 @@ export default function CreateSession() {
           name: ex.exercise?.name ?? "",
           category: ex.exercise?.category ?? "",
           isTimeBased: ex.isTimeBased ?? false,
-          sets: ex.sets.map((s) => ({
-            weight: s.weight.toString(),
-            reps: s.reps.toString(),
-            duration: s.durationSec != null ? s.durationSec.toString() : "",
-            done: false,
-          })),
+          sets: ex.sets.map((s) =>
+            createSet({
+              weight: s.weight.toString(),
+              reps: s.reps.toString(),
+              duration: s.durationSec != null ? s.durationSec.toString() : "",
+              done: false,
+            }),
+          ),
         }),
       );
     }
-    return draft?.exercises ?? [];
+    return normalizeExercises(draft?.exercises ?? []);
   });
   const [sessionId, setSessionId] = useState<number | null>(
     location.state?.sessionId ?? draft?.sessionId ?? null,
@@ -134,6 +179,214 @@ export default function CreateSession() {
   const [originalEndTime, setOriginalEndTime] = useState<string | null>(null);
   const [selectedLabels, setSelectedLabels] = useState<string[]>(
     draft?.selectedLabels ?? location.state?.labels ?? [],
+  );
+  const [setTimers, setSetTimers] = useState<Record<string, SetTimerState>>({});
+  const [activeTimerKey, setActiveTimerKey] = useState<string | null>(null);
+  const [timerNowMs, setTimerNowMs] = useState<number>(Date.now());
+  const [timerModalTarget, setTimerModalTarget] =
+    useState<TimerModalTarget | null>(null);
+
+  useEffect(() => {
+    if (!activeTimerKey) return;
+    const timer = window.setInterval(() => {
+      setTimerNowMs(Date.now());
+    }, 10);
+    return () => window.clearInterval(timer);
+  }, [activeTimerKey]);
+
+  const clearTimersBySetIds = useCallback((setIds: string[]) => {
+    if (setIds.length === 0) return;
+
+    const ids = new Set(setIds);
+    setSetTimers((prev) => {
+      const next = { ...prev };
+      setIds.forEach((id) => {
+        delete next[id];
+      });
+      return next;
+    });
+
+    setActiveTimerKey((prev) => (prev && ids.has(prev) ? null : prev));
+  }, []);
+
+  const getElapsedMsByKey = useCallback(
+    (setKey: string, nowMs: number = Date.now()) => {
+      const timer = setTimers[setKey];
+      if (!timer) return 0;
+      const runningDelta = timer.runningSinceMs
+        ? nowMs - timer.runningSinceMs
+        : 0;
+      return Math.max(0, timer.elapsedMs + runningDelta);
+    },
+    [setTimers],
+  );
+
+  const getSetKey = useCallback(
+    (exerciseIndex: number, setIndex: number) => {
+      return exercises[exerciseIndex]?.sets[setIndex]?.setId ?? null;
+    },
+    [exercises],
+  );
+
+  const getSetLocationById = useCallback(
+    (setId: string) => {
+      for (
+        let exerciseIndex = 0;
+        exerciseIndex < exercises.length;
+        exerciseIndex += 1
+      ) {
+        const setIndex = exercises[exerciseIndex].sets.findIndex(
+          (set) => set.setId === setId,
+        );
+        if (setIndex !== -1) {
+          return { exerciseIndex, setIndex };
+        }
+      }
+      return null;
+    },
+    [exercises],
+  );
+
+  useEffect(() => {
+    if (!timerModalTarget) return;
+    const location = getSetLocationById(timerModalTarget.setId);
+
+    if (!location) {
+      setTimerModalTarget(null);
+      return;
+    }
+
+    if (
+      location.exerciseIndex !== timerModalTarget.exerciseIndex ||
+      location.setIndex !== timerModalTarget.setIndex
+    ) {
+      setTimerModalTarget((prev) =>
+        prev
+          ? {
+              ...prev,
+              exerciseIndex: location.exerciseIndex,
+              setIndex: location.setIndex,
+            }
+          : prev,
+      );
+    }
+  }, [exercises, getSetLocationById, timerModalTarget]);
+
+  const pauseTimerByKey = useCallback((setKey: string) => {
+    const nowMs = Date.now();
+
+    setSetTimers((prev) => {
+      const timer = prev[setKey];
+      if (!timer || !timer.runningSinceMs) return prev;
+      return {
+        ...prev,
+        [setKey]: {
+          elapsedMs: timer.elapsedMs + (nowMs - timer.runningSinceMs),
+          runningSinceMs: null,
+        },
+      };
+    });
+
+    setActiveTimerKey((prev) => (prev === setKey ? null : prev));
+  }, []);
+
+  const startSetTimer = useCallback(
+    (exerciseIndex: number, setIndex: number) => {
+      const setKey = getSetKey(exerciseIndex, setIndex);
+      if (!setKey) return;
+
+      if (activeTimerKey && activeTimerKey !== setKey) {
+        pauseTimerByKey(activeTimerKey);
+      }
+
+      const nowMs = Date.now();
+      setTimerNowMs(nowMs);
+      setSetTimers((prev) => {
+        const existing = prev[setKey];
+        if (existing?.runningSinceMs) return prev;
+        return {
+          ...prev,
+          [setKey]: {
+            elapsedMs: existing?.elapsedMs ?? 0,
+            runningSinceMs: nowMs,
+          },
+        };
+      });
+      setActiveTimerKey(setKey);
+    },
+    [activeTimerKey, getSetKey, pauseTimerByKey],
+  );
+
+  const stopSetTimer = useCallback(
+    (exerciseIndex: number, setIndex: number) => {
+      const setKey = getSetKey(exerciseIndex, setIndex);
+      if (!setKey) return;
+
+      const elapsedSeconds = Math.max(
+        1,
+        Math.floor(getElapsedMsByKey(setKey) / 1000),
+      );
+
+      setSetTimers((prev) => ({
+        ...prev,
+        [setKey]: {
+          elapsedMs: elapsedSeconds * 1000,
+          runningSinceMs: null,
+        },
+      }));
+      setActiveTimerKey((prev) => (prev === setKey ? null : prev));
+
+      setExercises((prev) => {
+        const updatedExercises = [...prev];
+        const currentSet = updatedExercises[exerciseIndex]?.sets[setIndex];
+        if (!currentSet) return prev;
+        updatedExercises[exerciseIndex].sets[setIndex] = {
+          ...currentSet,
+          duration: elapsedSeconds.toString(),
+        };
+        return updatedExercises;
+      });
+      setHasUnsavedChanges(true);
+    },
+    [getElapsedMsByKey, getSetKey],
+  );
+
+  const resetSetTimer = useCallback(
+    (exerciseIndex: number, setIndex: number) => {
+      const setKey = getSetKey(exerciseIndex, setIndex);
+      if (!setKey) return;
+
+      setSetTimers((prev) => ({
+        ...prev,
+        [setKey]: {
+          elapsedMs: 0,
+          runningSinceMs: null,
+        },
+      }));
+      setActiveTimerKey((prev) => (prev === setKey ? null : prev));
+
+      setExercises((prev) => {
+        const updatedExercises = [...prev];
+        const currentSet = updatedExercises[exerciseIndex]?.sets[setIndex];
+        if (!currentSet) return prev;
+        updatedExercises[exerciseIndex].sets[setIndex] = {
+          ...currentSet,
+          duration: "",
+          done: false,
+        };
+        return updatedExercises;
+      });
+      setHasUnsavedChanges(true);
+    },
+    [getSetKey],
+  );
+
+  const isSetTimerRunning = useCallback(
+    (exerciseIndex: number, setIndex: number) => {
+      const setKey = getSetKey(exerciseIndex, setIndex);
+      return setKey ? activeTimerKey === setKey : false;
+    },
+    [activeTimerKey, getSetKey],
   );
 
   // For edit/resume: load existing session data
@@ -152,12 +405,15 @@ export default function CreateSession() {
               name: ex.exercise.name,
               category: ex.exercise.category,
               isTimeBased: ex.isTimeBased ?? false,
-              sets: ex.sets.map((s) => ({
-                weight: s.weight.toString(),
-                reps: s.reps.toString(),
-                duration: s.durationSec != null ? s.durationSec.toString() : "",
-                done: s.isHardSet,
-              })),
+              sets: ex.sets.map((s) =>
+                createSet({
+                  weight: s.weight.toString(),
+                  reps: s.reps.toString(),
+                  duration:
+                    s.durationSec != null ? s.durationSec.toString() : "",
+                  done: ex.isTimeBased ? false : s.isHardSet,
+                }),
+              ),
             })),
           );
         } catch (error) {
@@ -236,7 +492,7 @@ export default function CreateSession() {
               weight: parseFloat(set.weight) || 0,
               reps: ex.isTimeBased ? 0 : parseInt(set.reps) || 0,
               durationSec: ex.isTimeBased ? parseInt(set.duration) || 0 : null,
-              isHardSet: set.done,
+              isHardSet: ex.isTimeBased ? false : set.done,
             })),
         })),
       };
@@ -249,7 +505,7 @@ export default function CreateSession() {
     } finally {
       setIsSaving(false);
     }
-  }, [sessionId, sessionName, exercises, token, isSaving]);
+  }, [sessionId, sessionName, selectedLabels, exercises, token, isSaving]);
 
   const calculateTotalVolume = () => {
     return exercises.reduce((total, exercise) => {
@@ -272,23 +528,46 @@ export default function CreateSession() {
     const newExercise: SessionExercise = {
       ...exercise,
       isTimeBased: false,
-      sets: [{ weight: "", reps: "", duration: "", done: false }],
+      sets: [createSet()],
     };
     setExercises([...exercises, newExercise]);
     setHasUnsavedChanges(true);
   };
 
   const toggleTimeBased = (exerciseIndex: number) => {
+    const targetExercise = exercises[exerciseIndex];
+    if (!targetExercise) return;
+
+    if (targetExercise.isTimeBased) {
+      clearTimersBySetIds(targetExercise.sets.map((set) => set.setId));
+      if (
+        timerModalTarget &&
+        targetExercise.sets.some((set) => set.setId === timerModalTarget.setId)
+      ) {
+        setTimerModalTarget(null);
+      }
+    }
+
     const updatedExercises = [...exercises];
     updatedExercises[exerciseIndex] = {
       ...updatedExercises[exerciseIndex],
       isTimeBased: !updatedExercises[exerciseIndex].isTimeBased,
+      sets: updatedExercises[exerciseIndex].sets.map((set) => ({
+        ...set,
+        done: !updatedExercises[exerciseIndex].isTimeBased ? false : set.done,
+      })),
     };
     setExercises(updatedExercises);
     setHasUnsavedChanges(true);
   };
 
   const removeExercise = (exerciseIndex: number) => {
+    const removedSetIds =
+      exercises[exerciseIndex]?.sets.map((set) => set.setId) ?? [];
+    clearTimersBySetIds(removedSetIds);
+    if (timerModalTarget && removedSetIds.includes(timerModalTarget.setId)) {
+      setTimerModalTarget(null);
+    }
     setExercises(exercises.filter((_, idx) => idx !== exerciseIndex));
     setHasUnsavedChanges(true);
   };
@@ -300,16 +579,26 @@ export default function CreateSession() {
         updatedExercises[exerciseIndex].sets.length - 1
       ];
     updatedExercises[exerciseIndex].sets.push({
-      weight: lastSet?.weight || "",
-      reps: lastSet?.reps || "",
-      duration: lastSet?.duration || "",
-      done: false,
+      ...createSet({
+        weight: lastSet?.weight || "",
+        reps: lastSet?.reps || "",
+        duration: lastSet?.duration || "",
+        done: false,
+      }),
     });
     setExercises(updatedExercises);
     setHasUnsavedChanges(true);
   };
 
   const removeSet = (exerciseIndex: number, setIndex: number) => {
+    const removedSetId = exercises[exerciseIndex]?.sets[setIndex]?.setId;
+    if (removedSetId) {
+      clearTimersBySetIds([removedSetId]);
+      if (timerModalTarget?.setId === removedSetId) {
+        setTimerModalTarget(null);
+      }
+    }
+
     const updatedExercises = [...exercises];
     updatedExercises[exerciseIndex].sets = updatedExercises[
       exerciseIndex
@@ -317,6 +606,48 @@ export default function CreateSession() {
     setExercises(updatedExercises);
     setHasUnsavedChanges(true);
   };
+
+  const openSetTimerModal = (exerciseIndex: number, setIndex: number) => {
+    const setId = getSetKey(exerciseIndex, setIndex);
+    if (!setId) return;
+    setTimerModalTarget({ exerciseIndex, setIndex, setId });
+  };
+
+  const closeSetTimerModal = () => {
+    setTimerModalTarget(null);
+  };
+
+  const handleModalStart = () => {
+    if (!timerModalTarget) return;
+    startSetTimer(timerModalTarget.exerciseIndex, timerModalTarget.setIndex);
+  };
+
+  const handleModalStop = () => {
+    if (!timerModalTarget) return;
+    stopSetTimer(timerModalTarget.exerciseIndex, timerModalTarget.setIndex);
+  };
+
+  const handleModalReset = () => {
+    if (!timerModalTarget) return;
+    resetSetTimer(timerModalTarget.exerciseIndex, timerModalTarget.setIndex);
+  };
+
+  const modalSetTitle = timerModalTarget
+    ? `${exercises[timerModalTarget.exerciseIndex]?.name ?? "Set"} - Set ${
+        timerModalTarget.setIndex + 1
+      }`
+    : "Set Timer";
+
+  const modalElapsedMs = timerModalTarget
+    ? getElapsedMsByKey(timerModalTarget.setId, timerNowMs)
+    : 0;
+
+  const modalIsRunning = timerModalTarget
+    ? isSetTimerRunning(
+        timerModalTarget.exerciseIndex,
+        timerModalTarget.setIndex,
+      )
+    : false;
 
   const toggleSetDone = (exerciseIndex: number, setIndex: number) => {
     const updatedExercises = [...exercises];
@@ -351,7 +682,7 @@ export default function CreateSession() {
             weight: parseFloat(set.weight) || 0,
             reps: ex.isTimeBased ? 0 : parseInt(set.reps) || 0,
             durationSec: ex.isTimeBased ? parseInt(set.duration) || 0 : null,
-            isHardSet: set.done,
+            isHardSet: ex.isTimeBased ? false : set.done,
           })),
       }));
 
@@ -510,6 +841,7 @@ export default function CreateSession() {
               onRemoveExercise={removeExercise}
               onRemoveSet={removeSet}
               onToggleTimeBased={toggleTimeBased}
+              onOpenSetTimerModal={openSetTimerModal}
             />
           ))}
 
@@ -539,6 +871,18 @@ export default function CreateSession() {
         {/* Bottom Safe Area */}
         <div className="bg-background h-8 md:hidden"></div>
       </div>
+
+      {/* Add Exercise Modal */}
+      <SetTimerModal
+        isOpen={!!timerModalTarget}
+        onClose={closeSetTimerModal}
+        title={modalSetTitle}
+        elapsedMs={modalElapsedMs}
+        isRunning={modalIsRunning}
+        onStart={handleModalStart}
+        onStop={handleModalStop}
+        onReset={handleModalReset}
+      />
 
       {/* Add Exercise Modal */}
       <AddExerciseModal

@@ -5,11 +5,13 @@ import { api } from "./api";
 export interface SessionSetInput {
   weight: number;
   reps: number;
+  durationSec?: number | null;
   isHardSet: boolean;
 }
 
 export interface SessionExerciseInput {
   exerciseId: string;
+  isTimeBased?: boolean;
   sets: SessionSetInput[];
 }
 
