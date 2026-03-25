@@ -1,10 +1,16 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { api } from "../../../utils/api";
-import { AuthContext } from "../../../context/AuthContext";
+import { useAuth } from "../../../context/AuthContext";
 import ExerciseItem from "../../ui/exercises/ExerciseItem";
 import CreateExerciseModal from "../../ui/exercises/modals/CreateExerciseModal";
 import ExerciseDetailsModal from "../../ui/exercises/modals/ExerciseDetailsModal";
 import ConfirmModal from "../../ui/exercises/modals/ConfirmDeleteModal";
+import { useExerciseSearch } from "../../../hooks/useExerciseSearch";
+import {
+  getExerciseCache,
+  getUserIdFromToken,
+} from "../../../utils/exerciseCache";
+import { USE_CLIENT_EXERCISE_SEARCH } from "../../../utils/featureFlags";
 // --- Types ---
 interface Exercise {
   id: string;
@@ -33,9 +39,10 @@ export default function ExerciseList({
   filters = {},
   search = "",
 }: ExerciseListProps) {
-  const { token } = useContext(AuthContext);
+  const { token, exerciseCacheRevision, refreshExerciseCache } = useAuth();
   const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [cachedExercises, setCachedExercises] = useState<Exercise[]>([]);
+  const [isLoading, setIsLoading] = useState(USE_CLIENT_EXERCISE_SEARCH);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
   const [viewingExercise, setViewingExercise] = useState<Exercise | null>(null);
@@ -46,7 +53,48 @@ export default function ExerciseList({
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const searchResult = useExerciseSearch({
+    exercises: cachedExercises,
+    searchTerm: search,
+    filters,
+    page,
+    pageSize,
+  });
+
+  const displayedExercises = USE_CLIENT_EXERCISE_SEARCH
+    ? searchResult.items
+    : exercises;
+  const currentTotal = USE_CLIENT_EXERCISE_SEARCH ? searchResult.total : total;
+  const currentPage = USE_CLIENT_EXERCISE_SEARCH ? searchResult.page : page;
+  const totalPages = USE_CLIENT_EXERCISE_SEARCH
+    ? searchResult.totalPages
+    : Math.max(1, Math.ceil(total / pageSize));
+
+  const loadCachedExercises = async () => {
+    if (!token) {
+      setCachedExercises([]);
+      setIsLoading(false);
+      return;
+    }
+
+    const userId = getUserIdFromToken(token);
+    if (!userId) {
+      setCachedExercises([]);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+
+    let data = getExerciseCache(userId) as Exercise[];
+    if (data.length === 0) {
+      await refreshExerciseCache();
+      data = getExerciseCache(userId) as Exercise[];
+    }
+
+    setCachedExercises(data);
+    setIsLoading(false);
+  };
 
   // Fetch Exercises
   const fetchExercises = async (
@@ -93,6 +141,11 @@ export default function ExerciseList({
   // If already on page 1 setPage is a no-op so we fetch directly;
   // otherwise setting page triggers the navigation effect below.
   useEffect(() => {
+    if (USE_CLIENT_EXERCISE_SEARCH) {
+      if (page !== 1) setPage(1);
+      return;
+    }
+
     if (!token) return;
     if (page !== 1) {
       setPage(1);
@@ -111,10 +164,21 @@ export default function ExerciseList({
 
   // Fetch whenever the page number changes (includes navigating back to page 1)
   useEffect(() => {
+    if (USE_CLIENT_EXERCISE_SEARCH) return;
     if (!token) return;
     fetchExercises(page, pageSize);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
+
+  useEffect(() => {
+    if (!USE_CLIENT_EXERCISE_SEARCH) return;
+    loadCachedExercises().catch((error) => {
+      console.error("Failed to load cached exercises:", error);
+      setCachedExercises([]);
+      setIsLoading(false);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, exerciseCacheRevision]);
 
   // Close menu when clicking anywhere else on the page
   useEffect(() => {
@@ -157,7 +221,13 @@ export default function ExerciseList({
     if (!deletingExercise || !token) return;
     try {
       await api.delete(`/exercises/${deletingExercise.id}`, token);
-      fetchExercises(page, pageSize); // Refresh list
+
+      if (USE_CLIENT_EXERCISE_SEARCH) {
+        await refreshExerciseCache();
+        await loadCachedExercises();
+      } else {
+        fetchExercises(page, pageSize);
+      }
     } catch (error) {
       console.error("Failed to delete exercise", error);
       alert("Failed to delete exercise.");
@@ -191,18 +261,18 @@ export default function ExerciseList({
           </select>
         </div>
         <span className="text-sm text-text-muted">
-          {total > 0
-            ? `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} of ${total}`
+          {currentTotal > 0
+            ? `${(currentPage - 1) * pageSize + 1}–${Math.min(currentPage * pageSize, currentTotal)} of ${currentTotal}`
             : "No results"}
         </span>
       </div>
 
-      {exercises.length === 0 ? (
+      {displayedExercises.length === 0 ? (
         <div className="text-center p-8 text-text-muted">
           No exercises found.
         </div>
       ) : (
-        exercises.map((item, index) => (
+        displayedExercises.map((item, index) => (
           <div
             key={item.id}
             onClick={() => setViewingExercise(item)}
@@ -228,17 +298,17 @@ export default function ExerciseList({
           <button
             className="px-4 py-2 rounded-lg text-sm font-medium bg-surface border border-border text-text disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/10 hover:text-primary transition-colors"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
+            disabled={currentPage === 1}
           >
             ← Prev
           </button>
           <span className="text-sm text-text-muted">
-            Page {page} of {totalPages}
+            Page {currentPage} of {totalPages}
           </span>
           <button
             className="px-4 py-2 rounded-lg text-sm font-medium bg-surface border border-border text-text disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/10 hover:text-primary transition-colors"
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
+            disabled={currentPage === totalPages}
           >
             Next →
           </button>
@@ -263,7 +333,15 @@ export default function ExerciseList({
             : null
         }
         onSuccess={() => {
-          fetchExercises(page, pageSize);
+          if (USE_CLIENT_EXERCISE_SEARCH) {
+            refreshExerciseCache()
+              .then(() => loadCachedExercises())
+              .catch((error) =>
+                console.error("Failed to refresh cache:", error),
+              );
+          } else {
+            fetchExercises(page, pageSize);
+          }
         }}
       />
 

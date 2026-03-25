@@ -1,12 +1,16 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { cacheService } from "../utils/cacheService";
 import { storageService } from "../utils/storageService";
+import { exerciseService } from "../utils/exercises";
+import { clearExerciseCache, getUserIdFromToken } from "../utils/exerciseCache";
 
 interface AuthContextType {
   token: string | null;
   login: (token: string) => void;
   logout: () => void;
   isAuthenticated: boolean;
+  exerciseCacheRevision: number;
+  refreshExerciseCache: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,6 +36,13 @@ const deleteCookie = (name: string) => {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Initialize from cookie
   const [token, setToken] = useState<string | null>(() => getCookie("token"));
+  const [exerciseCacheRevision, setExerciseCacheRevision] = useState(0);
+
+  const refreshExerciseCache = async () => {
+    if (!token) return;
+    await exerciseService.syncExerciseCache(token);
+    setExerciseCacheRevision((prev) => prev + 1);
+  };
 
   const login = (newToken: string) => {
     setToken(newToken);
@@ -39,10 +50,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    const userId = getUserIdFromToken(token);
     setToken(null);
     deleteCookie("token");
     cacheService.clear(); // Clear memory cache
     storageService.clear(); // Clear localStorage with TTL data
+    if (userId) {
+      clearExerciseCache(userId);
+    }
   };
 
   // Sync state with cookie (in case it's mutated elsewhere, though Context usually drives this)
@@ -53,10 +68,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  useEffect(() => {
+    if (!token) return;
+    refreshExerciseCache().catch((error) => {
+      console.error("Failed to refresh exercise cache:", error);
+    });
+  }, [token]);
+
   const isAuthenticated = !!token;
 
   return (
-    <AuthContext.Provider value={{ token, login, logout, isAuthenticated }}>
+    <AuthContext.Provider
+      value={{
+        token,
+        login,
+        logout,
+        isAuthenticated,
+        exerciseCacheRevision,
+        refreshExerciseCache,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

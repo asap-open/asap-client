@@ -4,6 +4,12 @@ import { useAuth } from "../../context/AuthContext";
 import SearchBar from "../dashboard/exercises/SearchBar";
 import Modal from "../ui/Modal";
 import ExerciseFilters from "../dashboard/exercises/ExerciseFilters";
+import { useExerciseSearch } from "../../hooks/useExerciseSearch";
+import {
+  getExerciseCache,
+  getUserIdFromToken,
+} from "../../utils/exerciseCache";
+import { USE_CLIENT_EXERCISE_SEARCH } from "../../utils/featureFlags";
 
 interface Exercise {
   id: string;
@@ -27,15 +33,31 @@ export default function AddExerciseModal({
   onClose,
   onAddExercise,
 }: AddExerciseModalProps) {
-  const { token } = useAuth();
+  const { token, exerciseCacheRevision, refreshExerciseCache } = useAuth();
   const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [cachedExercises, setCachedExercises] = useState<Exercise[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(USE_CLIENT_EXERCISE_SEARCH);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const localSearch = useExerciseSearch({
+    exercises: cachedExercises,
+    searchTerm: searchQuery,
+    filters,
+    page,
+    pageSize,
+  });
+
+  const displayedExercises = USE_CLIENT_EXERCISE_SEARCH
+    ? localSearch.items
+    : exercises;
+  const currentTotal = USE_CLIENT_EXERCISE_SEARCH ? localSearch.total : total;
+  const currentPage = USE_CLIENT_EXERCISE_SEARCH ? localSearch.page : page;
+  const totalPages = USE_CLIENT_EXERCISE_SEARCH
+    ? localSearch.totalPages
+    : Math.max(1, Math.ceil(total / pageSize));
 
   const [filters, setFilters] = useState({
     muscle: "",
@@ -43,10 +65,41 @@ export default function AddExerciseModal({
     equipment: "",
   });
 
+  const loadCachedExercises = async () => {
+    if (!token) {
+      setCachedExercises([]);
+      setLoading(false);
+      return;
+    }
+
+    const userId = getUserIdFromToken(token);
+    if (!userId) {
+      setCachedExercises([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    let data = getExerciseCache(userId) as Exercise[];
+    if (data.length === 0) {
+      await refreshExerciseCache();
+      data = getExerciseCache(userId) as Exercise[];
+    }
+
+    setCachedExercises(data);
+    setLoading(false);
+  };
+
   // When search/filters/pageSize change, reset to page 1.
   // If already on page 1 setPage is a no-op so we fetch directly;
   // otherwise setting page triggers the navigation effect below.
   useEffect(() => {
+    if (USE_CLIENT_EXERCISE_SEARCH) {
+      if (!isOpen) return;
+      if (page !== 1) setPage(1);
+      return;
+    }
+
     if (isOpen) {
       if (page !== 1) {
         setPage(1);
@@ -59,11 +112,22 @@ export default function AddExerciseModal({
 
   // Fetch whenever the page number changes (includes navigating back to page 1)
   useEffect(() => {
+    if (USE_CLIENT_EXERCISE_SEARCH) return;
     if (isOpen) {
       fetchExercises(page, pageSize);
     }
     // eslint-disable-next-line
   }, [page]);
+
+  useEffect(() => {
+    if (!USE_CLIENT_EXERCISE_SEARCH || !isOpen) return;
+    loadCachedExercises().catch((error) => {
+      console.error("Failed to load cached exercises:", error);
+      setCachedExercises([]);
+      setLoading(false);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, token, exerciseCacheRevision]);
 
   const fetchExercises = async (
     currentPage: number,
@@ -153,11 +217,11 @@ export default function AddExerciseModal({
               </select>
             </div>
             <span className="text-xs text-text-muted">
-              {total > 0
-                ? `${(page - 1) * pageSize + 1}–${Math.min(
-                    page * pageSize,
-                    total,
-                  )} of ${total}`
+              {currentTotal > 0
+                ? `${(currentPage - 1) * pageSize + 1}–${Math.min(
+                    currentPage * pageSize,
+                    currentTotal,
+                  )} of ${currentTotal}`
                 : "No results"}
             </span>
           </div>
@@ -167,13 +231,13 @@ export default function AddExerciseModal({
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
               Loading exercises...
             </div>
-          ) : exercises.length === 0 ? (
+          ) : displayedExercises.length === 0 ? (
             <div className="text-center py-8 text-text-muted bg-surface-hover rounded-lg mt-2 border border-dashed border-border">
               No exercises found
             </div>
           ) : (
             <div className="space-y-2 pb-2 pt-1">
-              {exercises.map((exercise) => (
+              {displayedExercises.map((exercise) => (
                 <button
                   key={exercise.id}
                   onClick={() => handleAddExercise(exercise)}
@@ -202,17 +266,17 @@ export default function AddExerciseModal({
               <button
                 className="px-3 py-1.5 rounded-lg text-sm font-medium bg-surface border border-border text-text disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/10 hover:text-primary transition-colors"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
+                disabled={currentPage === 1}
               >
                 ← Prev
               </button>
               <span className="text-sm text-text-muted">
-                {page} / {totalPages}
+                {currentPage} / {totalPages}
               </span>
               <button
                 className="px-3 py-1.5 rounded-lg text-sm font-medium bg-surface border border-border text-text disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/10 hover:text-primary transition-colors"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
+                disabled={currentPage === totalPages}
               >
                 Next →
               </button>

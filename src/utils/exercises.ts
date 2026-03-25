@@ -1,6 +1,13 @@
 import { api } from "./api";
 import { fetchWithSWR, invalidateCache } from "./swrHelpers";
 import { CacheTTL } from "./cacheService";
+import {
+  getExerciseCache,
+  getExerciseCacheVersion,
+  getUserIdFromToken,
+  setExerciseCache,
+  setExerciseCacheVersion,
+} from "./exerciseCache";
 
 export interface FilterOptions {
   muscles: string[];
@@ -8,7 +15,67 @@ export interface FilterOptions {
   equipment: string[];
 }
 
+export interface ExerciseCacheItem {
+  id: string;
+  name: string;
+  category: string;
+  equipment: string;
+  isBodyweightExercise: boolean;
+  primaryMuscles: string[];
+  secondaryMuscles?: string[];
+  instructions?: string;
+  isCustom: boolean;
+  createdBy?: string;
+}
+
 export const exerciseService = {
+  getLastUpdated: async (token: string): Promise<string | null> => {
+    try {
+      const response = await api.get("/exercises/last-updated", token);
+      return response?.data?.lastUpdated ?? null;
+    } catch (error) {
+      console.error("Failed to fetch exercises last-updated:", error);
+      return null;
+    }
+  },
+
+  getAllExercises: async (token: string): Promise<ExerciseCacheItem[]> => {
+    try {
+      const response = await api.get("/exercises/all", token);
+      return Array.isArray(response.data) ? response.data : [];
+    } catch (error) {
+      console.error("Failed to fetch all exercises:", error);
+      return [];
+    }
+  },
+
+  syncExerciseCache: async (token: string): Promise<ExerciseCacheItem[]> => {
+    const userId = getUserIdFromToken(token);
+    if (!userId) return [];
+
+    const [remoteVersion, localVersion, localData] = await Promise.all([
+      exerciseService.getLastUpdated(token),
+      Promise.resolve(getExerciseCacheVersion(userId)),
+      Promise.resolve(getExerciseCache(userId)),
+    ]);
+
+    const shouldRefresh =
+      !localData.length ||
+      !localVersion ||
+      (remoteVersion !== null && remoteVersion !== localVersion);
+
+    if (!shouldRefresh) {
+      return localData;
+    }
+
+    const fresh = await exerciseService.getAllExercises(token);
+    setExerciseCache(userId, fresh);
+    if (remoteVersion) {
+      setExerciseCacheVersion(userId, remoteVersion);
+    }
+    return fresh;
+  },
+
   getMuscles: async (
     token: string,
     onUpdate?: (data: string[]) => void,
