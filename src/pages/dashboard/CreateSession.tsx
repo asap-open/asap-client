@@ -36,6 +36,8 @@ interface SessionExercise {
   id: string;
   name: string;
   category: string;
+  equipment?: string;
+  isBodyweightExercise?: boolean;
   isTimeBased: boolean;
   sets: Set[];
 }
@@ -140,7 +142,13 @@ export default function CreateSession() {
         (ex: {
           exerciseId: string;
           isTimeBased?: boolean;
-          exercise: { id: string; name: string; category: string };
+          exercise: {
+            id: string;
+            name: string;
+            category: string;
+            equipment?: string;
+            isBodyweightExercise?: boolean;
+          };
           sets: {
             weight: number;
             reps: number;
@@ -151,6 +159,8 @@ export default function CreateSession() {
           id: ex.exercise?.id ?? ex.exerciseId,
           name: ex.exercise?.name ?? "",
           category: ex.exercise?.category ?? "",
+          equipment: ex.exercise?.equipment ?? "",
+          isBodyweightExercise: ex.exercise?.isBodyweightExercise ?? false,
           isTimeBased: ex.isTimeBased ?? false,
           sets: ex.sets.map((s) =>
             createSet({
@@ -404,6 +414,8 @@ export default function CreateSession() {
               id: ex.exercise.id ?? ex.exerciseId,
               name: ex.exercise.name,
               category: ex.exercise.category,
+              equipment: ex.exercise.equipment ?? "",
+              isBodyweightExercise: ex.exercise.isBodyweightExercise ?? false,
               isTimeBased: ex.isTimeBased ?? false,
               sets: ex.sets.map((s) =>
                 createSet({
@@ -520,10 +532,37 @@ export default function CreateSession() {
     }, 0);
   };
 
+  const calculateBodyweightScore = () => {
+    return exercises.reduce((total, exercise) => {
+      if (exercise.isTimeBased) return total;
+      const repsValues = exercise.sets.map((set) => parseInt(set.reps) || 0);
+      const hasAnyReps = repsValues.some((reps) => reps > 0);
+      const allWeightsAreZero = exercise.sets.every((set) => {
+        if (!set.weight) return true;
+        return (parseFloat(set.weight) || 0) === 0;
+      });
+
+      const isBodyweight =
+        exercise.isBodyweightExercise ||
+        exercise.equipment?.toLowerCase().includes("body") ||
+        (hasAnyReps && allWeightsAreZero);
+      if (!isBodyweight) return total;
+
+      const repsScore = exercise.sets.reduce((sum, set) => {
+        if (!set.done) return sum;
+        return sum + (parseInt(set.reps) || 0);
+      }, 0);
+
+      return total + repsScore;
+    }, 0);
+  };
+
   const addExerciseToSession = (exercise: {
     id: string;
     name: string;
     category: string;
+    equipment?: string;
+    isBodyweightExercise?: boolean;
   }) => {
     const newExercise: SessionExercise = {
       ...exercise,
@@ -860,12 +899,20 @@ export default function CreateSession() {
       <div className="fixed bottom-0 left-0 right-0 z-50">
         {/* Volume Bar */}
         <div className="bg-primary px-4 py-3 flex justify-between items-center text-white shadow-lg">
-          <span className="text-xs uppercase font-bold opacity-90">
-            Session Volume
-          </span>
-          <span className="text-lg font-black">
-            {calculateTotalVolume().toLocaleString()} Kgs
-          </span>
+          <div className="flex flex-col">
+            <span className="text-[10px] uppercase font-bold opacity-85">
+              Session Metrics
+            </span>
+            <span className="text-xs opacity-90">Volume + BW Score</span>
+          </div>
+          <div className="text-right leading-tight">
+            <p className="text-base font-black">
+              {calculateTotalVolume().toLocaleString()} kg
+            </p>
+            <p className="text-xs font-semibold opacity-90">
+              BW {calculateBodyweightScore().toLocaleString()} reps
+            </p>
+          </div>
         </div>
 
         {/* Bottom Safe Area */}

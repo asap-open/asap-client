@@ -35,6 +35,7 @@ export interface CalendarStats {
   date: string;
   workouts: number;
   totalVolume?: number;
+  bodyweightScore?: number;
   totalDuration?: number;
 }
 

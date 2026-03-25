@@ -10,6 +10,7 @@ export interface ConsistencyData {
 export interface VolumeData {
   day: string;
   volume: number;
+  bodyweightScore?: number;
 }
 
 export interface MuscleData {

@@ -2,6 +2,7 @@ import { api } from "../utils/api";
 
 export interface SessionStats {
   totalVolume: number;
+  bodyweightScore?: number;
   duration: number | null;
   exerciseCount: number;
   totalSets: number;
@@ -28,6 +29,8 @@ export interface WorkoutSession {
       id: string;
       name: string;
       category: string;
+      equipment?: string;
+      isBodyweightExercise?: boolean;
     };
   }>;
 }

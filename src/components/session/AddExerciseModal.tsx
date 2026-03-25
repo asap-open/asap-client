@@ -10,6 +10,7 @@ interface Exercise {
   name: string;
   category: string;
   equipment: string;
+  isBodyweightExercise?: boolean;
   primaryMuscles: string[];
 }
 
@@ -153,7 +154,10 @@ export default function AddExerciseModal({
             </div>
             <span className="text-xs text-text-muted">
               {total > 0
-                ? `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} of ${total}`
+                ? `${(page - 1) * pageSize + 1}–${Math.min(
+                    page * pageSize,
+                    total,
+                  )} of ${total}`
                 : "No results"}
             </span>
           </div>

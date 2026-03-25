@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../../utils/api";
 import { useAuth } from "../../../context/AuthContext";
 import { TrendingUp } from "lucide-react";
+import type { VolumeData } from "../../../utils/progress";
 
 interface VolumeStatsProps {
   range: string;
@@ -9,9 +10,10 @@ interface VolumeStatsProps {
 
 export default function VolumeStats({ range }: VolumeStatsProps) {
   const { token } = useAuth();
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<VolumeData[]>([]);
   const [loading, setLoading] = useState(false);
   const [totalVolume, setTotalVolume] = useState(0);
+  const [totalBodyweightScore, setTotalBodyweightScore] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -21,10 +23,15 @@ export default function VolumeStats({ range }: VolumeStatsProps) {
         setData(res);
 
         const total = res.reduce(
-          (acc: number, curr: any) => acc + curr.volume,
+          (acc: number, curr: VolumeData) => acc + curr.volume,
+          0,
+        );
+        const bwTotal = res.reduce(
+          (acc: number, curr: VolumeData) => acc + (curr.bodyweightScore || 0),
           0,
         );
         setTotalVolume(total);
+        setTotalBodyweightScore(bwTotal);
       } catch (err) {
         console.error(err);
       } finally {
@@ -64,7 +71,9 @@ export default function VolumeStats({ range }: VolumeStatsProps) {
                   key={i}
                   className="w-full bg-primary rounded-t-sm opacity-80 hover:opacity-100 transition-opacity"
                   style={{ height: styleHeight }}
-                  title={`${d.day}: ${d.volume}kg`}
+                  title={`${d.day}: ${d.volume}kg, BW ${
+                    d.bodyweightScore || 0
+                  }`}
                 ></div>
               );
             })
@@ -81,11 +90,18 @@ export default function VolumeStats({ range }: VolumeStatsProps) {
       <div className="bg-surface rounded-xl p-5 shadow-sm border border-border flex flex-col items-center justify-center text-center">
         <div className="flex flex-col items-center gap-1">
           <p className="text-xs font-bold text-text-muted uppercase tracking-tight">
-            Total Volume
+            Total Volume (kg)
           </p>
           <p className="text-xl font-black text-text-main">
             {totalVolume.toLocaleString()}{" "}
             <span className="text-sm font-normal text-text-muted">kg</span>
+          </p>
+          <p className="text-[11px] font-bold text-text-muted uppercase tracking-tight mt-2">
+            Bodyweight Score
+          </p>
+          <p className="text-lg font-black text-text-main">
+            {totalBodyweightScore.toLocaleString()}
+            <span className="text-sm font-normal text-text-muted"> reps</span>
           </p>
           <div className="flex items-center gap-1 mt-2">
             <TrendingUp size={14} className="text-green-500" />

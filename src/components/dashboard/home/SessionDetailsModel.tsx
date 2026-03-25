@@ -64,7 +64,7 @@ export default function SessionDetailsModal({
             <Calendar className="w-4 h-4" />
             {formatDate(session.startTime)}
           </div>
-          <div className="grid grid-cols-3 gap-4 border-t border-border pt-4">
+          <div className="grid grid-cols-4 gap-4 border-t border-border pt-4">
             <div className="text-center">
               <div className="flex items-center justify-center gap-1 text-text-muted text-xs mb-1 uppercase font-semibold">
                 <Clock className="w-3 h-3" /> Duration
@@ -79,6 +79,14 @@ export default function SessionDetailsModal({
               </div>
               <div className="font-bold text-text-main">
                 {session.stats.totalVolume}kg
+              </div>
+            </div>
+            <div className="text-center border-l border-border">
+              <div className="flex items-center justify-center gap-1 text-text-muted text-xs mb-1 uppercase font-semibold">
+                <Timer className="w-3 h-3" /> BW Score
+              </div>
+              <div className="font-bold text-text-main">
+                {session.stats.bodyweightScore ?? 0}
               </div>
             </div>
             <div className="text-center border-l border-border">
