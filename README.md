@@ -17,12 +17,12 @@
 
 ## Tech Stack
 
-- **React 18** - UI library
+- **React 19** - UI library
 - **TypeScript** - Type safety
 - **Vite** - Build tool and dev server
 - **React Router** - Client-side routing
-- **Recharts** - Data visualization
 - **TailwindCSS** - Utility-first styling
+- **Framer Motion** - Smooth UI transitions
 - **Lucide React** - Icon library
 
 ## Project Structure
@@ -76,10 +76,10 @@ DOMAIN_NAME=localhost
 CAPACITOR_ANDROID_STUDIO_PATH=/home/<your-user>/.android-studio/bin/studio.sh
 ```
 
-| Variable                        | Required | Description                                                             |
-| ------------------------------- | -------- | ----------------------------------------------------------------------- |
-| `BACKEND_SERVER_URL`            | ✅       | API server URL (used by Vite proxy and API utility fallback resolution) |
-| `DOMAIN_NAME`                   |          | Hostname for HMR/allowed hosts (can be comma-separated)                 |
+| Variable             | Required | Description                                                             |
+| -------------------- | -------- | ----------------------------------------------------------------------- |
+| `BACKEND_SERVER_URL` | ✅       | API server URL (used by Vite proxy and API utility fallback resolution) |
+| `DOMAIN_NAME`        |          | Hostname for HMR/allowed hosts (can be comma-separated)                 |
 
 3. **Start development server**
 
@@ -141,11 +141,11 @@ The built files will be in the `dist/` directory. Serve them with any static fil
 
 ### Progress Tracking
 
-- Personal best records
-- Volume statistics over time
-- Body weight tracking with charts
-- Muscle group distribution
-- Training consistency heatmap
+- V2 progress dashboard with modular panels
+- Personal best timeline and strength trend (e1RM)
+- Workload analytics (ACWR and ramp rate)
+- Calendar drilldown with day detail and streaks
+- Muscle-balance filters and exercise/session breakdown
 
 ## Styling
 
