@@ -41,6 +41,9 @@ export default function Progress() {
   const [granularity, setGranularity] = useState<Granularity>("week");
   const [compare, setCompare] = useState(true);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [hasUserSelectedDay, setHasUserSelectedDay] = useState(false);
+  const [isMobileDaySheetOpen, setIsMobileDaySheetOpen] = useState(false);
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
   const [summary, setSummary] = useState<ProgressSummaryResponse | null>(null);
   const [calendar, setCalendar] = useState<ProgressCalendarResponse | null>(
     null,
@@ -67,6 +70,7 @@ export default function Progress() {
     const loadProgress = async () => {
       setLoading(true);
       setError(null);
+      setIsMobileDaySheetOpen(false);
       try {
         const [
           summaryData,
@@ -138,7 +142,7 @@ export default function Progress() {
   }, [token, range, selectedExerciseId]);
 
   useEffect(() => {
-    if (!token || !selectedDay) {
+    if (!token || !selectedDay || !hasUserSelectedDay) {
       setDayDetail(null);
       return;
     }
@@ -156,7 +160,38 @@ export default function Progress() {
     };
 
     loadDayDetail();
-  }, [token, selectedDay]);
+  }, [token, selectedDay, hasUserSelectedDay]);
+
+  useEffect(() => {
+    const scrollRoot = document.getElementById("dashboard-scroll-root");
+    if (!scrollRoot) {
+      return;
+    }
+
+    let lastY = scrollRoot.scrollTop;
+
+    const handleScroll = () => {
+      const currentY = scrollRoot.scrollTop;
+      const delta = currentY - lastY;
+
+      if (Math.abs(delta) < 8) {
+        return;
+      }
+
+      if (currentY < 24) {
+        setIsHeaderCollapsed(false);
+      } else if (delta > 0) {
+        setIsHeaderCollapsed(true);
+      } else {
+        setIsHeaderCollapsed(false);
+      }
+
+      lastY = currentY;
+    };
+
+    scrollRoot.addEventListener("scroll", handleScroll, { passive: true });
+    return () => scrollRoot.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const calendarDays = useMemo(() => {
     if (!calendar) return [];
@@ -198,33 +233,45 @@ export default function Progress() {
     return Math.max(...(strengthTrend?.series.map((s) => s.e1rm) ?? [0]), 1);
   }, [strengthTrend]);
 
+  const handleCalendarDaySelect = (day: string) => {
+    setSelectedDay(day);
+    setHasUserSelectedDay(true);
+    setIsMobileDaySheetOpen(true);
+  };
+
+  const handleTimelineDaySelect = (day: string) => {
+    setSelectedDay(day);
+    setHasUserSelectedDay(true);
+  };
+
   return (
     <div className="min-h-screen flex flex-col max-w-md mx-auto w-full md:max-w-6xl pb-28 md:pb-10">
       <ProgressHeader
         range={range}
         mode={mode}
         error={error}
+        collapsed={isHeaderCollapsed}
         onRangeChange={setRange}
         onModeChange={setMode}
       />
 
       <main className="px-6 pt-5 grid grid-cols-1 md:grid-cols-12 gap-6">
-        <ProgressKpiGrid summary={summary} />
-
         <ProgressCalendarPanel
           loading={loading}
           selectedDay={selectedDay}
           metric={calendarMetric}
           paddedCalendarDays={paddedCalendarDays}
           calendarSummary={calendar?.summary ?? null}
-          onSelectDay={setSelectedDay}
+          onSelectDay={handleCalendarDaySelect}
           onMetricChange={setCalendarMetric}
         />
 
+        <ProgressKpiGrid summary={summary} />
+
         <ProgressDayDetailPanel
-          selectedDay={selectedDay}
-          dayLoading={dayLoading}
-          dayDetail={dayDetail}
+          selectedDay={hasUserSelectedDay ? selectedDay : null}
+          dayLoading={hasUserSelectedDay ? dayLoading : false}
+          dayDetail={hasUserSelectedDay ? dayDetail : null}
           selectedMuscleGroup={selectedMuscleGroup}
         />
 
@@ -255,15 +302,16 @@ export default function Progress() {
           pbTimeline={pbTimeline}
           selectedExerciseId={selectedExerciseId}
           onSelectExercise={setSelectedExerciseId}
-          onSelectDay={setSelectedDay}
+          onSelectDay={handleTimelineDaySelect}
         />
       </main>
 
       <ProgressMobileDaySheet
+        isOpen={isMobileDaySheetOpen && hasUserSelectedDay}
         selectedDay={selectedDay}
-        dayLoading={dayLoading}
-        dayDetail={dayDetail}
-        onClose={() => setSelectedDay(null)}
+        dayLoading={hasUserSelectedDay ? dayLoading : false}
+        dayDetail={hasUserSelectedDay ? dayDetail : null}
+        onClose={() => setIsMobileDaySheetOpen(false)}
       />
     </div>
   );

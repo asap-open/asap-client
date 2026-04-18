@@ -1,14 +1,9 @@
-import {
-  type KeyboardEvent,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type KeyboardEvent, useMemo, useState } from "react";
 import {
   type CalendarMetric,
   type ProgressCalendarDay,
 } from "../../../../utils/progress";
+import { CalendarDays, ChevronDown, SlidersHorizontal } from "lucide-react";
 import { levelClass } from "./constants";
 
 interface ProgressCalendarPanelProps {
@@ -36,7 +31,6 @@ export function ProgressCalendarPanel({
   onMetricChange,
 }: ProgressCalendarPanelProps) {
   const [hoveredDay, setHoveredDay] = useState<string | null>(null);
-  const buttonRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const dayMap = useMemo(() => {
     const map = new Map<string, ProgressCalendarDay>();
@@ -48,22 +42,50 @@ export function ProgressCalendarPanel({
     return map;
   }, [paddedCalendarDays]);
 
-  useEffect(() => {
-    if (!selectedDay) {
-      return;
-    }
-    if (!dayMap.has(selectedDay)) {
-      setHoveredDay(null);
-    }
-  }, [selectedDay, dayMap]);
-
-  const activeDayKey = hoveredDay ?? selectedDay;
-  const activeDay = activeDayKey ? (dayMap.get(activeDayKey) ?? null) : null;
-
   const realDays = useMemo(
     () => paddedCalendarDays.filter(Boolean) as ProgressCalendarDay[],
     [paddedCalendarDays],
   );
+
+  const fallbackSelectedDay = realDays[realDays.length - 1]?.day ?? null;
+  const resolvedSelectedDay =
+    selectedDay && dayMap.has(selectedDay) ? selectedDay : fallbackSelectedDay;
+
+  const resolvedHoveredDay =
+    hoveredDay && dayMap.has(hoveredDay) ? hoveredDay : null;
+  const baseDayKey = resolvedHoveredDay ?? resolvedSelectedDay;
+  const activeDay = baseDayKey ? (dayMap.get(baseDayKey) ?? null) : null;
+  const baseDate = useMemo(
+    () => (baseDayKey ? new Date(`${baseDayKey}T00:00:00.000Z`) : new Date()),
+    [baseDayKey],
+  );
+
+  const monthLabel = useMemo(
+    () =>
+      baseDate.toLocaleDateString(undefined, {
+        month: "long",
+      }),
+    [baseDate],
+  );
+
+  const weekDays = useMemo(() => {
+    const start = new Date(baseDate);
+    start.setUTCDate(start.getUTCDate() - start.getUTCDay());
+
+    return Array.from({ length: 7 }).map((_, idx) => {
+      const date = new Date(start);
+      date.setUTCDate(start.getUTCDate() + idx);
+      const key = date.toISOString().split("T")[0];
+
+      return {
+        key,
+        shortLabel: date.toLocaleDateString(undefined, { weekday: "short" }),
+        dateNumber: date.getUTCDate(),
+        isWeekend: idx === 0 || idx === 6,
+        item: dayMap.get(key) ?? null,
+      };
+    });
+  }, [baseDate, dayMap]);
 
   const activeDayStreak = useMemo(() => {
     if (!activeDay) return 0;
@@ -83,38 +105,53 @@ export function ProgressCalendarPanel({
     return end - start + 1;
   }, [activeDay, realDays]);
 
-  const findNextSelectableIndex = (startIndex: number, step: number) => {
-    let idx = startIndex + step;
-    while (idx >= 0 && idx < paddedCalendarDays.length) {
-      if (paddedCalendarDays[idx]) {
-        return idx;
-      }
-      idx += step;
+  const findNextRealDay = (fromDay: string, step: number) => {
+    const idx = realDays.findIndex((item) => item.day === fromDay);
+    if (idx < 0) {
+      return null;
     }
-    return -1;
+
+    const next = realDays[idx + step];
+    return next ?? null;
   };
 
   const handleDayKeyDown = (
     event: KeyboardEvent<HTMLButtonElement>,
-    index: number,
+    day: ProgressCalendarDay,
   ) => {
-    let step = 0;
-    if (event.key === "ArrowRight") step = 1;
-    if (event.key === "ArrowLeft") step = -1;
-    if (event.key === "ArrowDown") step = 7;
-    if (event.key === "ArrowUp") step = -7;
-    if (!step) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onSelectDay(day.day);
+      return;
+    }
+
+    let direction = 0;
+    if (event.key === "ArrowRight") direction = 1;
+    if (event.key === "ArrowLeft") direction = -1;
+    if (!direction) return;
 
     event.preventDefault();
-    const nextIndex = findNextSelectableIndex(index, step);
-    if (nextIndex < 0) return;
-
-    const nextDay = paddedCalendarDays[nextIndex];
-    if (!nextDay) return;
+    const nextDay = findNextRealDay(day.day, direction);
+    if (!nextDay) {
+      return;
+    }
 
     onSelectDay(nextDay.day);
     setHoveredDay(nextDay.day);
-    buttonRefs.current[nextIndex]?.focus();
+  };
+
+  const cycleMetric = () => {
+    const order: CalendarMetric[] = ["sessions", "volume", "intensity"];
+    const currentIndex = order.indexOf(metric);
+    const next = order[(currentIndex + 1) % order.length];
+    onMetricChange(next);
+  };
+
+  const jumpToLatest = () => {
+    if (!fallbackSelectedDay) {
+      return;
+    }
+    onSelectDay(fallbackSelectedDay);
   };
 
   const metricLabel =
@@ -133,83 +170,142 @@ export function ProgressCalendarPanel({
     : "--";
 
   return (
-    <section className="md:col-span-8 bg-surface rounded-xl border border-border p-5">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-black text-text-main">
-          Consistency Calendar
-        </h2>
-        <div className="flex items-center gap-2">
-          <span className="hidden sm:inline text-xs font-semibold text-text-muted">
-            Click a day to drill down
-          </span>
-          <div className="grid grid-cols-3 bg-surface-hover border border-border rounded-lg p-1">
-            {(
-              [
-                ["sessions", "S"],
-                ["volume", "V"],
-                ["intensity", "I"],
-              ] as Array<[CalendarMetric, string]>
-            ).map(([item, label]) => (
-              <button
-                key={item}
-                onClick={() => onMetricChange(item)}
-                title={item}
-                className={`text-[11px] px-2 py-1 rounded-md font-bold uppercase ${
-                  metric === item ? "bg-primary text-white" : "text-text-muted"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-7 gap-2 mb-3">
-        {["S", "M", "T", "W", "T", "F", "S"].map((day) => (
-          <p
-            key={day}
-            className="text-[10px] font-bold text-text-muted text-center uppercase"
-          >
-            {day}
-          </p>
-        ))}
-      </div>
-
+    <section className="md:col-span-12 bg-surface rounded-xl border border-border p-4 md:p-6">
       {loading ? (
-        <div className="h-44 flex items-center justify-center text-sm text-text-muted">
+        <div className="h-32 flex items-center justify-center text-sm text-text-muted">
           Loading calendar...
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-            <div className="bg-surface-hover rounded-lg p-2">
-              <p className="text-[10px] text-text-muted">Active Day</p>
-              <p className="text-xs font-semibold text-text-main mt-0.5">
-                {activeDay
-                  ? new Date(
-                      `${activeDay.day}T00:00:00.000Z`,
-                    ).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })
-                  : "--"}
-              </p>
+          <div className="flex items-center justify-between gap-3">
+            <button
+              type="button"
+              className="flex items-center gap-1.5 md:gap-2 text-lg md:text-xl font-black text-text-main tracking-tight group whitespace-nowrap"
+            >
+              {monthLabel}
+              <ChevronDown
+                size={18}
+                strokeWidth={2.25}
+                className="text-text-muted group-hover:text-primary transition-colors"
+              />
+            </button>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={jumpToLatest}
+                title="Jump to latest day"
+                className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-surface-hover border border-border flex items-center justify-center text-text-main hover:text-primary transition-colors"
+              >
+                <CalendarDays size={17} strokeWidth={2.2} />
+              </button>
+              <button
+                type="button"
+                onClick={cycleMetric}
+                title={`Switch metric (current: ${metric})`}
+                className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-surface-hover border border-border flex items-center justify-center text-text-main hover:text-primary transition-colors"
+              >
+                <SlidersHorizontal size={17} strokeWidth={2.2} />
+              </button>
             </div>
-            <div className="bg-surface-hover rounded-lg p-2">
+          </div>
+
+          <div className="mt-4 grid grid-cols-7 gap-1 md:gap-2">
+            {weekDays.map((weekDay) => {
+              const isSelected = resolvedSelectedDay === weekDay.key;
+              const metricText =
+                weekDay.item == null
+                  ? "--"
+                  : metric === "sessions"
+                    ? weekDay.item.sessions.toLocaleString()
+                    : metric === "volume"
+                      ? Math.round(weekDay.item.volume).toLocaleString()
+                      : weekDay.item.intensity.toFixed(1);
+
+              return (
+                <div
+                  key={weekDay.key}
+                  className="flex flex-col items-center gap-2 md:gap-3"
+                >
+                  <span
+                    className={`text-[10px] md:text-xs font-semibold uppercase tracking-wider ${
+                      weekDay.isWeekend ? "text-red-500" : "text-text-muted"
+                    }`}
+                  >
+                    {weekDay.shortLabel}
+                  </span>
+
+                  {weekDay.item ? (
+                    <button
+                      type="button"
+                      onClick={() => onSelectDay(weekDay.item.day)}
+                      onMouseEnter={() => setHoveredDay(weekDay.item.day)}
+                      onMouseLeave={() => setHoveredDay(null)}
+                      onFocus={() => setHoveredDay(weekDay.item.day)}
+                      onBlur={() => setHoveredDay(null)}
+                      onKeyDown={(event) =>
+                        handleDayKeyDown(event, weekDay.item)
+                      }
+                      title={`${weekDay.item.day} • ${weekDay.item.sessions} sessions • ${Math.round(weekDay.item.volume)} volume`}
+                      className="flex flex-col items-center gap-2 outline-none"
+                    >
+                      {isSelected ? (
+                        <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-primary flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.35)]">
+                          <span className="text-base md:text-lg font-bold text-white">
+                            {weekDay.dateNumber}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-base md:text-lg font-bold text-text-main leading-none">
+                          {weekDay.dateNumber}
+                        </span>
+                      )}
+
+                      <span
+                        className={`w-6 h-1 rounded-full ${
+                          levelClass[weekDay.item.level]
+                        }`}
+                      />
+                    </button>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 opacity-40">
+                      <span className="text-base md:text-lg font-bold text-text-main leading-none">
+                        {weekDay.dateNumber}
+                      </span>
+                      <span className="w-6 h-1 rounded-full bg-surface-hover" />
+                    </div>
+                  )}
+
+                  <span className="text-[10px] md:text-[11px] text-text-muted leading-none">
+                    {metricText}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-5">
+            <div className="bg-surface-hover rounded-lg p-2 border border-border/70">
               <p className="text-[10px] text-text-muted">{metricLabel}</p>
               <p className="text-xs font-semibold text-text-main mt-0.5">
                 {metricValue}
               </p>
             </div>
-            <div className="bg-surface-hover rounded-lg p-2">
+            <div className="bg-surface-hover rounded-lg p-2 border border-border/70">
               <p className="text-[10px] text-text-muted">Day Streak</p>
               <p className="text-xs font-semibold text-text-main mt-0.5">
                 {activeDayStreak}d
               </p>
             </div>
-            <div className="bg-surface-hover rounded-lg p-2">
+            <div className="bg-surface-hover rounded-lg p-2 border border-border/70">
+              <p className="text-[10px] text-text-muted">Active Days</p>
+              <p className="text-xs font-semibold text-text-main mt-0.5">
+                {calendarSummary
+                  ? `${calendarSummary.activeDays}/${calendarSummary.totalDays}`
+                  : "--"}
+              </p>
+            </div>
+            <div className="bg-surface-hover rounded-lg p-2 border border-border/70">
               <p className="text-[10px] text-text-muted">Current / Best</p>
               <p className="text-xs font-semibold text-text-main mt-0.5">
                 {calendarSummary
@@ -219,38 +315,7 @@ export function ProgressCalendarPanel({
             </div>
           </div>
 
-          <p className="text-[11px] text-text-muted mb-2">
-            Arrow keys navigate days. Enter selects and updates drilldown.
-          </p>
-
-          <div className="grid grid-cols-7 gap-2">
-            {paddedCalendarDays.map((item, idx) =>
-              item ? (
-                <button
-                  ref={(el) => {
-                    buttonRefs.current[idx] = el;
-                  }}
-                  key={item.day}
-                  onClick={() => onSelectDay(item.day)}
-                  onMouseEnter={() => setHoveredDay(item.day)}
-                  onMouseLeave={() => setHoveredDay(null)}
-                  onFocus={() => setHoveredDay(item.day)}
-                  onBlur={() => setHoveredDay(null)}
-                  onKeyDown={(event) => handleDayKeyDown(event, idx)}
-                  title={`${item.day} • ${item.sessions} sessions • ${Math.round(item.volume)} volume`}
-                  className={`aspect-square rounded-md transition-all border ${
-                    selectedDay === item.day
-                      ? "ring-2 ring-primary border-primary"
-                      : "border-transparent"
-                  } ${
-                    activeDay?.day === item.day ? "ring-1 ring-primary/50" : ""
-                  } ${levelClass[item.level]}`}
-                />
-              ) : (
-                <div key={`empty-${idx}`} className="aspect-square" />
-              ),
-            )}
-          </div>
+          <div className="w-12 h-1 bg-surface-hover rounded-full mx-auto mt-5" />
         </>
       )}
     </section>

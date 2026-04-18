@@ -64,7 +64,10 @@ export default function DashboardLayout() {
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <main className="flex-1 overflow-y-auto relative h-full pb-24 md:pb-0 scrollbar-hide">
+      <main
+        id="dashboard-scroll-root"
+        className="flex-1 overflow-y-auto relative h-full pb-24 md:pb-0 scrollbar-hide"
+      >
         <Outlet />
 
         {/* Overlay when Quick Actions are open */}

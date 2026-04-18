@@ -1,6 +1,7 @@
 import { type DayDetailResponse } from "../../../../utils/progress";
 
 interface ProgressMobileDaySheetProps {
+  isOpen: boolean;
   selectedDay: string | null;
   dayLoading: boolean;
   dayDetail: DayDetailResponse | null;
@@ -8,12 +9,13 @@ interface ProgressMobileDaySheetProps {
 }
 
 export function ProgressMobileDaySheet({
+  isOpen,
   selectedDay,
   dayLoading,
   dayDetail,
   onClose,
 }: ProgressMobileDaySheetProps) {
-  if (!selectedDay) {
+  if (!isOpen || !selectedDay) {
     return null;
   }
 
