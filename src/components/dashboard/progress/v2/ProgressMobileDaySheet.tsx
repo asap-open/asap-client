@@ -28,7 +28,7 @@ export function ProgressMobileDaySheet({
   });
 
   return (
-    <section className="md:hidden fixed left-0 right-0 bottom-20 z-20 px-4">
+    <section className="md:hidden fixed left-0 right-0 bottom-28 z-20 px-4">
       <div className="absolute inset-0 -z-10 bg-background/30 backdrop-blur-[2px]" />
       <div className="bg-surface/95 border border-border rounded-3xl shadow-2xl p-4 backdrop-blur-md">
         <div className="w-10 h-1 rounded-full bg-border mx-auto mb-3" />

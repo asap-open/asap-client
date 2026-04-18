@@ -129,7 +129,7 @@ export default function DashboardLayout() {
           </NavLink>
 
           {/* Center FAB */}
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2">
+          <div className="absolute -top-6 left-1/2 -translate-x-1/2">
             <button
               onClick={() => setIsActionsOpen(!isActionsOpen)}
               className={`flex items-center justify-center h-16 w-16 rounded-full shadow-xl ring-4 ring-background transition-transform active:scale-95 ${isActionsOpen ? "bg-text-main rotate-45" : "bg-primary"}`}

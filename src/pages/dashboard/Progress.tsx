@@ -30,7 +30,11 @@ import { ProgressWorkloadPanel } from "../../components/dashboard/progress/v2/Pr
 import { ProgressInsightsPanel } from "../../components/dashboard/progress/v2/ProgressInsightsPanel";
 import { ProgressPBTimelinePanel } from "../../components/dashboard/progress/v2/ProgressPBTimelinePanel";
 import { ProgressMobileDaySheet } from "../../components/dashboard/progress/v2/ProgressMobileDaySheet";
-import { type MuscleGroupFilter } from "../../components/dashboard/progress/v2/constants";
+import {
+  type MuscleGroupFilter,
+  modes,
+  ranges,
+} from "../../components/dashboard/progress/v2/constants";
 
 export default function Progress() {
   const { token } = useAuth();
@@ -43,7 +47,13 @@ export default function Progress() {
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [hasUserSelectedDay, setHasUserSelectedDay] = useState(false);
   const [isMobileDaySheetOpen, setIsMobileDaySheetOpen] = useState(false);
-  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(() => {
+    if (typeof document === "undefined") {
+      return false;
+    }
+    const scrollRoot = document.getElementById("dashboard-scroll-root");
+    return scrollRoot ? scrollRoot.scrollTop > 24 : false;
+  });
   const [summary, setSummary] = useState<ProgressSummaryResponse | null>(null);
   const [calendar, setCalendar] = useState<ProgressCalendarResponse | null>(
     null,
@@ -168,25 +178,16 @@ export default function Progress() {
       return;
     }
 
-    let lastY = scrollRoot.scrollTop;
+    let collapsedState = scrollRoot.scrollTop > 24;
 
     const handleScroll = () => {
       const currentY = scrollRoot.scrollTop;
-      const delta = currentY - lastY;
+      const nextCollapsed = currentY > 24;
 
-      if (Math.abs(delta) < 8) {
-        return;
+      if (nextCollapsed !== collapsedState) {
+        collapsedState = nextCollapsed;
+        setIsHeaderCollapsed(nextCollapsed);
       }
-
-      if (currentY < 24) {
-        setIsHeaderCollapsed(false);
-      } else if (delta > 0) {
-        setIsHeaderCollapsed(true);
-      } else {
-        setIsHeaderCollapsed(false);
-      }
-
-      lastY = currentY;
     };
 
     scrollRoot.addEventListener("scroll", handleScroll, { passive: true });
@@ -246,16 +247,43 @@ export default function Progress() {
 
   return (
     <div className="min-h-screen flex flex-col max-w-md mx-auto w-full md:max-w-6xl pb-28 md:pb-10">
-      <ProgressHeader
-        range={range}
-        mode={mode}
-        error={error}
-        collapsed={isHeaderCollapsed}
-        onRangeChange={setRange}
-        onModeChange={setMode}
-      />
+      <ProgressHeader error={error} collapsed={isHeaderCollapsed} />
 
       <main className="px-6 pt-5 grid grid-cols-1 md:grid-cols-12 gap-6">
+        <section className="md:col-span-12 flex flex-col items-center gap-3">
+          <div className="grid grid-cols-3 bg-surface border border-border rounded-2xl p-1 w-full max-w-sm">
+            {modes.map((item) => (
+              <button
+                key={item}
+                onClick={() => setMode(item)}
+                className={`text-xs font-bold px-4 py-2.5 rounded-xl transition-colors ${
+                  mode === item
+                    ? "bg-primary text-white"
+                    : "text-text-muted hover:bg-surface-hover"
+                }`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-2 w-full">
+            {ranges.map((item) => (
+              <button
+                key={item}
+                onClick={() => setRange(item)}
+                className={`text-xs font-bold px-3.5 py-2 rounded-xl whitespace-nowrap transition-colors ${
+                  range === item
+                    ? "bg-primary text-white"
+                    : "bg-surface text-text-muted border border-border hover:bg-surface-hover"
+                }`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </section>
+
         <ProgressCalendarPanel
           loading={loading}
           selectedDay={selectedDay}

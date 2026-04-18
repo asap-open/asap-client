@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ExerciseHeader from "../../components/dashboard/exercises/ExerciseHeader";
 import SearchBar from "../../components/dashboard/exercises/SearchBar";
 import ExerciseFilters from "../../components/dashboard/exercises/ExerciseFilters";
@@ -9,6 +9,13 @@ import CreateExerciseModal from "../../components/ui/exercises/modals/CreateExer
 export default function Exercises() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFiltersModalOpen, setIsFiltersModalOpen] = useState(false);
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(() => {
+    if (typeof document === "undefined") {
+      return false;
+    }
+    const scrollRoot = document.getElementById("dashboard-scroll-root");
+    return scrollRoot ? scrollRoot.scrollTop > 24 : false;
+  });
   const [filters, setFilters] = useState({
     muscle: "",
     category: "",
@@ -17,9 +24,34 @@ export default function Exercises() {
   const [search, setSearch] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
 
+  useEffect(() => {
+    const scrollRoot = document.getElementById("dashboard-scroll-root");
+    if (!scrollRoot) {
+      return;
+    }
+
+    let collapsedState = scrollRoot.scrollTop > 24;
+
+    const handleScroll = () => {
+      const currentY = scrollRoot.scrollTop;
+      const nextCollapsed = currentY > 24;
+
+      if (nextCollapsed !== collapsedState) {
+        collapsedState = nextCollapsed;
+        setIsHeaderCollapsed(nextCollapsed);
+      }
+    };
+
+    scrollRoot.addEventListener("scroll", handleScroll, { passive: true });
+    return () => scrollRoot.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col max-w-md mx-auto w-full md:max-w-4xl">
-      <ExerciseHeader onAddClick={() => setIsModalOpen(true)} />
+      <ExerciseHeader
+        onAddClick={() => setIsModalOpen(true)}
+        collapsed={isHeaderCollapsed}
+      />
       <div className="flex flex-col md:flex-row md:items-center md:gap-4 px-6 pt-4">
         <div className="flex-1">
           <SearchBar value={search} onChange={setSearch} />
