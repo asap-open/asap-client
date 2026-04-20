@@ -1,10 +1,32 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTheme } from "../../../../context/ThemeContext";
 import {
   type MuscleBalanceResponse,
   type Strength1RMResponse,
   type WorkloadResponse,
 } from "../../../../utils/progress";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip as ChartTooltip,
+  Legend,
+} from "chart.js";
+import { Line } from "react-chartjs-2";
 import { type MuscleGroupFilter, workloadStatusTone } from "./constants";
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  ChartTooltip,
+  Legend
+);
 
 type ExerciseOption = {
   id: string;
@@ -36,6 +58,12 @@ export function ProgressInsightsPanel({
 }: ProgressInsightsPanelProps) {
   const [hoveredPointDay, setHoveredPointDay] = useState<string | null>(null);
   const [selectedPointDay, setSelectedPointDay] = useState<string | null>(null);
+  const { theme } = useTheme();
+
+  const themeColors = {
+    primary: theme === "dark" ? "#9bdf57" : "#13ecd6",
+    surface: theme === "dark" ? "#1c1918" : "#ffffff",
+  };
 
   const visibleSeries = useMemo(
     () => strengthTrend?.series.slice(-10) ?? [],
@@ -110,30 +138,57 @@ export function ProgressInsightsPanel({
               </p>
             </div>
 
-            <div className="h-20 flex items-end gap-1">
-              {strengthTrend.series.slice(-10).map((point) => {
-                const height = Math.max(
-                  (point.e1rm / strengthSeriesMax) * 100,
-                  8,
-                );
-                const isActive = activePoint?.day === point.day;
-                return (
-                  <button
-                    key={point.day}
-                    type="button"
-                    onMouseEnter={() => setHoveredPointDay(point.day)}
-                    onMouseLeave={() => setHoveredPointDay(null)}
-                    onFocus={() => setHoveredPointDay(point.day)}
-                    onBlur={() => setHoveredPointDay(null)}
-                    onClick={() => setSelectedPointDay(point.day)}
-                    className={`flex-1 bg-primary/70 rounded-t-sm outline-none transition-all ${
-                      isActive ? "ring-2 ring-primary/70" : ""
-                    }`}
-                    style={{ height: `${height}%` }}
-                    title={`${point.day} • ${point.e1rm.toFixed(1)}kg`}
-                  />
-                );
-              })}
+            <div className="h-40 w-full mt-4 mb-2">
+              <Line
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  onClick: (_, elements) => {
+                    if (elements.length > 0) {
+                      const idx = elements[0].index;
+                      const point = visibleSeries[idx];
+                      if (point) setSelectedPointDay(point.day);
+                    }
+                  },
+                  onHover: (_, elements) => {
+                    if (elements.length > 0) {
+                      const idx = elements[0].index;
+                      const point = visibleSeries[idx];
+                      if (point) setHoveredPointDay(point.day);
+                    } else {
+                      setHoveredPointDay(null);
+                    }
+                  },
+                  scales: {
+                    x: { display: false },
+                    y: { display: false, min: 0, max: strengthSeriesMax * 1.1 },
+                  },
+                  plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                      callbacks: {
+                        label: (context) => `${context.parsed.y.toFixed(1)} kg`,
+                      },
+                      displayColors: false,
+                    },
+                  },
+                }}
+                data={{
+                  labels: visibleSeries.map(p => p.day),
+                  datasets: [
+                    {
+                      data: visibleSeries.map(p => p.e1rm),
+                      borderColor: themeColors.primary,
+                      backgroundColor: themeColors.primary,
+                      pointBackgroundColor: visibleSeries.map(p => p.day === resolvedActiveDay ? themeColors.primary : themeColors.surface),
+                      pointBorderWidth: 2,
+                      pointRadius: visibleSeries.map(p => p.day === resolvedActiveDay ? 6 : 4),
+                      pointHoverRadius: 8,
+                      tension: 0.3,
+                    },
+                  ],
+                }}
+              />
             </div>
 
             <div className="grid grid-cols-3 gap-2">
