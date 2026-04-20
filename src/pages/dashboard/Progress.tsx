@@ -52,7 +52,7 @@ export default function Progress() {
       return false;
     }
     const scrollRoot = document.getElementById("dashboard-scroll-root");
-    return scrollRoot ? scrollRoot.scrollTop > 24 : false;
+    return scrollRoot ? scrollRoot.scrollTop > 60 : false;
   });
   const [summary, setSummary] = useState<ProgressSummaryResponse | null>(null);
   const [calendar, setCalendar] = useState<ProgressCalendarResponse | null>(
@@ -178,11 +178,15 @@ export default function Progress() {
       return;
     }
 
-    let collapsedState = scrollRoot.scrollTop > 24;
+    let collapsedState = scrollRoot.scrollTop > 60;
+    setIsHeaderCollapsed(collapsedState);
 
     const handleScroll = () => {
       const currentY = scrollRoot.scrollTop;
-      const nextCollapsed = currentY > 24;
+      // Use hysteresis to prevent flickering: 
+      // collapse later (60px), expand earlier (20px)
+      const threshold = collapsedState ? 20 : 60;
+      const nextCollapsed = currentY > threshold;
 
       if (nextCollapsed !== collapsedState) {
         collapsedState = nextCollapsed;

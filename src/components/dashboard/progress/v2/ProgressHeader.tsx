@@ -12,30 +12,28 @@ export function ProgressHeader({ error, collapsed }: ProgressHeaderProps) {
       animate={collapsed ? "hidden" : "visible"}
       variants={{
         visible: {
-          height: "auto",
           opacity: 1,
           y: 0,
           transition: {
-            duration: 0.28,
+            duration: 0.2,
             ease: [0.22, 1, 0.36, 1],
           },
         },
         hidden: {
-          height: 0,
           opacity: 0,
-          y: -12,
+          y: -20,
           transition: {
-            duration: 0.22,
+            duration: 0.2,
             ease: [0.4, 0, 0.2, 1],
           },
         },
       }}
-      className={`sticky top-0 z-20 bg-background/95 backdrop-blur-xl px-6 overflow-hidden ${
+      className={`sticky top-0 z-20 bg-background/95 backdrop-blur-xl px-6 transition-colors ${
         collapsed
           ? "pointer-events-none border-b-transparent"
           : "border-b border-border/80 shadow-sm"
       }`}
-      style={{ willChange: "height, transform, opacity" }}
+      style={{ willChange: "transform, opacity" }}
     >
       <div className="pt-7 md:pt-9 pb-4">
         <h1 className="text-2xl md:text-3xl font-black tracking-tight text-text-main leading-none">

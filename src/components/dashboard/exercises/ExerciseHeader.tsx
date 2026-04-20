@@ -16,28 +16,26 @@ export default function ExerciseHeader({
       animate={collapsed ? "hidden" : "visible"}
       variants={{
         visible: {
-          height: "auto",
           opacity: 1,
           y: 0,
           transition: {
-            duration: 0.28,
+            duration: 0.2,
             ease: [0.22, 1, 0.36, 1],
           },
         },
         hidden: {
-          height: 0,
           opacity: 0,
-          y: -10,
+          y: -20,
           transition: {
-            duration: 0.22,
+            duration: 0.2,
             ease: [0.4, 0, 0.2, 1],
           },
         },
       }}
-      className={`sticky top-0 z-20 bg-background/90 backdrop-blur-md px-6 overflow-hidden ${
+      className={`sticky top-0 z-20 bg-background/90 backdrop-blur-md px-6 transition-colors ${
         collapsed ? "pointer-events-none" : ""
       }`}
-      style={{ willChange: "height, transform, opacity" }}
+      style={{ willChange: "transform, opacity" }}
     >
       <div className="flex items-center justify-between pt-8 md:pt-12 pb-4">
         <h1 className="text-3xl font-bold tracking-tight text-text-main">

@@ -14,7 +14,7 @@ export default function Exercises() {
       return false;
     }
     const scrollRoot = document.getElementById("dashboard-scroll-root");
-    return scrollRoot ? scrollRoot.scrollTop > 24 : false;
+    return scrollRoot ? scrollRoot.scrollTop > 60 : false;
   });
   const [filters, setFilters] = useState({
     muscle: "",
@@ -30,11 +30,14 @@ export default function Exercises() {
       return;
     }
 
-    let collapsedState = scrollRoot.scrollTop > 24;
+    let collapsedState = scrollRoot.scrollTop > 60;
+    setIsHeaderCollapsed(collapsedState);
 
     const handleScroll = () => {
       const currentY = scrollRoot.scrollTop;
-      const nextCollapsed = currentY > 24;
+      // Use hysteresis to prevent flickering
+      const threshold = collapsedState ? 20 : 60;
+      const nextCollapsed = currentY > threshold;
 
       if (nextCollapsed !== collapsedState) {
         collapsedState = nextCollapsed;
