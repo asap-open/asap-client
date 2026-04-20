@@ -16,6 +16,7 @@ import Exercises from "./pages/dashboard/Exercises";
 import Progress from "./pages/dashboard/Progress";
 import CreateSession from "./pages/dashboard/CreateSession";
 import Settings from "./pages/dashboard/Settings";
+import Help from "./pages/dashboard/help/Help";
 
 // Route Guard Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -59,6 +60,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <CreateSession />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/help"
+        element={
+          <ProtectedRoute>
+            <Help />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dashboard/help/:topicId"
+        element={
+          <ProtectedRoute>
+            <Help />
           </ProtectedRoute>
         }
       />

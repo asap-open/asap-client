@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Settings, Bell } from "lucide-react";
+import { ArrowLeft, Settings, Bell, CircleHelp } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import EditProfileModal from "../../components/profile/modals/EditProfileModal";
 import ProfileHeader from "../../components/profile/info/ProfileHeader";
@@ -106,6 +106,14 @@ export default function Profile() {
             className="p-2 rounded-full hover:bg-surface-hover transition-colors text-text-muted"
           >
             <Bell size={20} />
+          </button>
+
+          {/* Help Button */}
+          <button
+            onClick={() => navigate("/dashboard/help")}
+            className="p-2 rounded-full hover:bg-surface-hover transition-colors text-text-muted"
+          >
+            <CircleHelp size={20} />
           </button>
 
           {/* Settings Button */}

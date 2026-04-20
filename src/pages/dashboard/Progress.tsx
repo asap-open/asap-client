@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { fetchWithSWR } from "../../utils/swrHelpers";
+import { CacheTTL } from "../../utils/cacheService";
 import {
   fetchMuscleBalance,
   fetchPBTimeline,
@@ -76,6 +78,7 @@ export default function Progress() {
 
   useEffect(() => {
     if (!token) return;
+    let isActive = true;
 
     const loadProgress = async () => {
       setLoading(true);
@@ -90,13 +93,45 @@ export default function Progress() {
           muscleBalanceData,
           pbTimelineData,
         ] = await Promise.all([
-          fetchProgressSummary(token, range, mode),
-          fetchProgressCalendar(token, range, calendarMetric),
-          fetchProgressTimeSeries(token, range, granularity, compare),
-          fetchWorkload(token, range),
-          fetchMuscleBalance(token, range, mode),
-          fetchPBTimeline(token, range),
+          fetchWithSWR(
+            `progress:summary:${range}:${mode}`,
+            () => fetchProgressSummary(token, range, mode),
+            CacheTTL.FIVE_MINUTES,
+            (data) => { if (isActive) setSummary(data); }
+          ),
+          fetchWithSWR(
+            `progress:calendar:${range}:${calendarMetric}`,
+            () => fetchProgressCalendar(token, range, calendarMetric),
+            CacheTTL.FIVE_MINUTES,
+            (data) => { if (isActive) setCalendar(data); }
+          ),
+          fetchWithSWR(
+            `progress:timeSeries:${range}:${granularity}:${compare}`,
+            () => fetchProgressTimeSeries(token, range, granularity, compare),
+            CacheTTL.FIVE_MINUTES,
+            (data) => { if (isActive) setTimeSeries(data); }
+          ),
+          fetchWithSWR(
+            `progress:workload:${range}`,
+            () => fetchWorkload(token, range),
+            CacheTTL.FIVE_MINUTES,
+            (data) => { if (isActive) setWorkload(data); }
+          ),
+          fetchWithSWR(
+            `progress:muscleBalance:${range}:${mode}`,
+            () => fetchMuscleBalance(token, range, mode),
+            CacheTTL.FIVE_MINUTES,
+            (data) => { if (isActive) setMuscleBalance(data); }
+          ),
+          fetchWithSWR(
+            `progress:pbTimeline:${range}`,
+            () => fetchPBTimeline(token, range),
+            CacheTTL.FIVE_MINUTES,
+            (data) => { if (isActive) setPbTimeline(data); }
+          ),
         ]);
+
+        if (!isActive) return;
 
         setSummary(summaryData);
         setCalendar(calendarData);
@@ -138,17 +173,24 @@ export default function Progress() {
       setStrengthTrend(null);
       return;
     }
+    let isActive = true;
 
     const loadStrengthTrend = async () => {
       try {
-        const result = await fetchStrength1RM(token, range, selectedExerciseId);
-        setStrengthTrend(result);
+        const result = await fetchWithSWR(
+          `progress:strength1RM:${range}:${selectedExerciseId}`,
+          () => fetchStrength1RM(token, range, selectedExerciseId),
+          CacheTTL.FIVE_MINUTES,
+          (data) => { if (isActive) setStrengthTrend(data); }
+        );
+        if (isActive) setStrengthTrend(result);
       } catch {
-        setStrengthTrend(null);
+        if (isActive) setStrengthTrend(null);
       }
     };
 
     loadStrengthTrend();
+    return () => { isActive = false; };
   }, [token, range, selectedExerciseId]);
 
   useEffect(() => {
@@ -156,20 +198,27 @@ export default function Progress() {
       setDayDetail(null);
       return;
     }
+    let isActive = true;
 
     const loadDayDetail = async () => {
       setDayLoading(true);
       try {
-        const detail = await fetchDayDetail(token, selectedDay);
-        setDayDetail(detail);
+        const detail = await fetchWithSWR(
+          `progress:dayDetail:${selectedDay}`,
+          () => fetchDayDetail(token, selectedDay),
+          CacheTTL.FIVE_MINUTES,
+          (data) => { if (isActive) setDayDetail(data); }
+        );
+        if (isActive) setDayDetail(detail);
       } catch {
-        setDayDetail(null);
+        if (isActive) setDayDetail(null);
       } finally {
-        setDayLoading(false);
+        if (isActive) setDayLoading(false);
       }
     };
 
     loadDayDetail();
+    return () => { isActive = false; };
   }, [token, selectedDay, hasUserSelectedDay]);
 
   useEffect(() => {
