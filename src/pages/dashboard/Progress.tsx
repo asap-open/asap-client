@@ -23,6 +23,8 @@ import {
   type Strength1RMResponse,
   type TimeRange,
   type WorkloadResponse,
+  type WeightHistoryResponse,
+  fetchWeightHistory,
 } from "../../utils/progress";
 import { ProgressHeader } from "../../components/dashboard/progress/v2/ProgressHeader";
 import { ProgressKpiGrid } from "../../components/dashboard/progress/v2/ProgressKpiGrid";
@@ -31,6 +33,7 @@ import { ProgressDayDetailPanel } from "../../components/dashboard/progress/v2/P
 import { ProgressWorkloadPanel } from "../../components/dashboard/progress/v2/ProgressWorkloadPanel";
 import { ProgressInsightsPanel } from "../../components/dashboard/progress/v2/ProgressInsightsPanel";
 import { ProgressPBTimelinePanel } from "../../components/dashboard/progress/v2/ProgressPBTimelinePanel";
+import { ProgressWeightHistoryPanel } from "../../components/dashboard/progress/v2/ProgressWeightHistoryPanel";
 import { ProgressMobileDaySheet } from "../../components/dashboard/progress/v2/ProgressMobileDaySheet";
 import {
   type MuscleGroupFilter,
@@ -66,6 +69,7 @@ export default function Progress() {
   const [muscleBalance, setMuscleBalance] =
     useState<MuscleBalanceResponse | null>(null);
   const [pbTimeline, setPbTimeline] = useState<PBTimelineResponse | null>(null);
+  const [weightHistory, setWeightHistory] = useState<WeightHistoryResponse | null>(null);
   const [selectedExerciseId, setSelectedExerciseId] = useState<string>("");
   const [selectedMuscleGroup, setSelectedMuscleGroup] =
     useState<MuscleGroupFilter | null>(null);
@@ -92,6 +96,7 @@ export default function Progress() {
           workloadData,
           muscleBalanceData,
           pbTimelineData,
+          weightHistoryData,
         ] = await Promise.all([
           fetchWithSWR(
             `progress:summary:${range}:${mode}`,
@@ -129,6 +134,12 @@ export default function Progress() {
             CacheTTL.FIVE_MINUTES,
             (data) => { if (isActive) setPbTimeline(data); }
           ),
+          fetchWithSWR(
+            `progress:weightHistory:${range}`,
+            () => fetchWeightHistory(token, range),
+            CacheTTL.FIVE_MINUTES,
+            (data) => { if (isActive) setWeightHistory(data); }
+          ),
         ]);
 
         if (!isActive) return;
@@ -139,6 +150,7 @@ export default function Progress() {
         setWorkload(workloadData);
         setMuscleBalance(muscleBalanceData);
         setPbTimeline(pbTimelineData);
+        setWeightHistory(weightHistoryData);
 
         const defaultExercise = pbTimelineData.events[0]?.exerciseId ?? "";
         setSelectedExerciseId((prev) => prev || defaultExercise);
@@ -365,6 +377,11 @@ export default function Progress() {
           maxSeriesValue={maxSeriesValue}
           onGranularityChange={setGranularity}
           onCompareToggle={() => setCompare((prev) => !prev)}
+        />
+
+        <ProgressWeightHistoryPanel
+          loading={loading}
+          history={weightHistory}
         />
 
         <ProgressInsightsPanel

@@ -205,6 +205,11 @@ export interface DayDetailResponse {
   }>;
 }
 
+export type WeightHistoryResponse = Array<{
+  date: string;
+  weight: number | null;
+}>;
+
 // --- API Functions ---
 
 /**
@@ -376,4 +381,12 @@ export const fetchDayDetail = async (
   if (!token) throw new Error("No auth token provided");
   if (!date) throw new Error("date is required");
   return await api.get(`/progress/day-detail?date=${date}`, token);
+};
+
+export const fetchWeightHistory = async (
+  token: string | null,
+  range: TimeRange,
+): Promise<WeightHistoryResponse> => {
+  if (!token) throw new Error("No auth token provided");
+  return await api.get(`/weights/history?range=${range}`, token);
 };
