@@ -18,11 +18,14 @@ RUN yarn build
 # Stage 2: Serve with Nginx
 FROM nginx:alpine
 
+# Default backend target (override at runtime)
+ENV BACKEND_URL=http://server:3000
+
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy nginx template configuration for envsubst
+COPY nginx.conf /etc/nginx/templates/default.conf.template
 
 # Expose port 80
 EXPOSE 80
