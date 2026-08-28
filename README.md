@@ -78,8 +78,10 @@ CAPACITOR_ANDROID_STUDIO_PATH=/home/<your-user>/.android-studio/bin/studio.sh
 
 | Variable             | Required | Description                                                             |
 | -------------------- | -------- | ----------------------------------------------------------------------- |
-| `VITE_BACKEND_SERVER_URL` | ✅       | API server URL  |
+| `VITE_BACKEND_SERVER_URL` | ✅       | Internal backend URL for Nginx to proxy `/api` requests to (e.g. `http://server:3000`) |
 | `DOMAIN_NAME`        |          | Hostname for HMR/allowed hosts (can be comma-separated)                 |
+
+> **How API routing works:** The compiled JavaScript always uses a **relative `/api` path**. Nginx inside the production container intercepts those requests and forwards them to `VITE_BACKEND_SERVER_URL` at runtime (via `envsubst`). The backend URL is **never baked into the JS bundle** — set this to the Docker/Kubernetes internal service name. In development (`yarn dev`), Vite's `server.proxy` handles the same forwarding transparently.
 
 3. **Start development server**
 

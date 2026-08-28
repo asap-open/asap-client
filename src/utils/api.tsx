@@ -1,7 +1,8 @@
-// Use the env var. If it's missing, fallback to "/api" (proxy)
-const ENV_URL = import.meta.env.VITE_BACKEND_SERVER_URL;
-
-const BASE_URL = ENV_URL ? `${ENV_URL}/api` : "/api";
+// Always use a relative path so that API requests are routed through the
+// Nginx /api proxy block, which forwards them to the backend at runtime.
+// This works correctly in all environments: Docker Compose (via Vite dev proxy),
+// production Nginx (via envsubst'd nginx.conf), and Kubernetes.
+const BASE_URL = "/api";
 
 const fetchWithAuth = async (
   endpoint: string,
