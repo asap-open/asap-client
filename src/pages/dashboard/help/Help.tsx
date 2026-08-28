@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft } from "lucide-react";
-import { useNavigate, useParams, Link } from "react-router-dom";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { useParams } from "react-router-dom";
+import HelpHeader from "../../../components/dashboard/help/HelpHeader";
+import HelpSidebar from "../../../components/dashboard/help/HelpSidebar";
+import HelpMobileDrawer from "../../../components/dashboard/help/HelpMobileDrawer";
+import HelpContentRenderer from "../../../components/dashboard/help/HelpContentRenderer";
+import HelpPagination from "../../../components/dashboard/help/HelpPagination";
+import { getCurrentTopic } from "./docsNav";
 
 // Automatically import all markdown files in the content directory as raw strings
 const markdownModules = import.meta.glob("./content/*.md", {
@@ -11,21 +14,26 @@ const markdownModules = import.meta.glob("./content/*.md", {
 });
 
 export default function Help() {
-  const navigate = useNavigate();
   const { topicId } = useParams<{ topicId?: string }>();
+  const activeTopicId = topicId || "index";
+  const currentTopic = getCurrentTopic(activeTopicId);
+
   const [content, setContent] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
   useEffect(() => {
     const loadContent = async () => {
       setLoading(true);
       try {
-        const key = `./content/${topicId || "index"}.md`;
+        const key = `./content/${activeTopicId}.md`;
         if (markdownModules[key]) {
           const rawContent = (await markdownModules[key]()) as string;
           setContent(rawContent);
         } else {
-          setContent("# 404 Not Found\n\nThe requested documentation page does not exist.\n\n[Return to Help Home](/dashboard/help)");
+          setContent(
+            `# 404 Not Found\n\nThe requested documentation page \`${activeTopicId}\` does not exist.\n\n[Return to Help Home](/dashboard/help)`
+          );
         }
       } catch (error) {
         setContent("# Error\n\nFailed to load documentation.");
@@ -35,54 +43,42 @@ export default function Help() {
     };
 
     loadContent();
-  }, [topicId]);
+    // Scroll to top when changing topics
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [activeTopicId]);
 
   return (
-    <div className="min-h-screen bg-background text-text-main font-display">
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl px-4 py-4 flex items-center gap-4 border-b border-border/50">
-        <button
-          onClick={() => navigate(-1)}
-          className="p-2 rounded-full hover:bg-surface-hover transition-colors text-text-muted"
-        >
-          <ArrowLeft size={20} />
-        </button>
-        <h1 className="text-xl font-bold">Help & Documentation</h1>
-      </header>
+    <div className="min-h-screen bg-background text-text-main font-display flex flex-col">
+      {/* Top Header */}
+      <HelpHeader
+        currentTopic={currentTopic}
+        onOpenMobileDrawer={() => setIsMobileDrawerOpen(true)}
+      />
 
-      <main className="max-w-3xl mx-auto px-6 py-8 pb-32">
-        {loading ? (
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-surface-hover rounded w-1/3"></div>
-            <div className="h-4 bg-surface-hover rounded w-full"></div>
-            <div className="h-4 bg-surface-hover rounded w-5/6"></div>
-            <div className="h-4 bg-surface-hover rounded w-4/6"></div>
-          </div>
-        ) : (
-          <article className="prose prose-slate dark:prose-invert prose-emerald max-w-none">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                a: ({ href, children, ...props }) => {
-                  if (href?.startsWith("/")) {
-                    return (
-                      <Link to={href} {...props}>
-                        {children}
-                      </Link>
-                    );
-                  }
-                  return (
-                    <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
-                      {children}
-                    </a>
-                  );
-                },
-              }}
-            >
-              {content}
-            </ReactMarkdown>
-          </article>
-        )}
-      </main>
+      {/* Main Layout Container */}
+      <div className="max-w-7xl mx-auto w-full flex-1 flex">
+        {/* Desktop Sidebar Navigation */}
+        <HelpSidebar activeTopicId={activeTopicId} />
+
+        {/* Content Area */}
+        <main className="flex-1 min-w-0 px-4 sm:px-8 py-8 pb-32 max-w-4xl">
+          <HelpContentRenderer
+            content={content}
+            loading={loading}
+            currentTopic={currentTopic}
+          />
+
+          {/* Next / Previous Pagination */}
+          {!loading && <HelpPagination activeTopicId={activeTopicId} />}
+        </main>
+      </div>
+
+      {/* Mobile Drawer Navigation */}
+      <HelpMobileDrawer
+        isOpen={isMobileDrawerOpen}
+        activeTopicId={activeTopicId}
+        onClose={() => setIsMobileDrawerOpen(false)}
+      />
     </div>
   );
 }

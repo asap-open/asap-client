@@ -1,7 +1,5 @@
 # Training Modes
 
-[Back to Home](/dashboard/help)
-
 ASAP evaluates your workout balance based on your selected goal. You can change your training mode on the Progress page.
 
 ## Body (Bodybuilding & Aesthetics)
