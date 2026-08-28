@@ -10,6 +10,7 @@ import {
 } from "recharts";
 import { ChevronDown, Filter, X, Check } from "lucide-react";
 import { SESSION_LABELS, type ProgressChartPoint, type SessionLabel } from "../../../utils/progress";
+import { useTheme } from "../../../context/ThemeContext";
 
 interface ProgressChartProps {
   data: ProgressChartPoint[];
@@ -28,6 +29,7 @@ export function ProgressChart({
   onLabelsChange,
   loading,
 }: ProgressChartProps) {
+  const { theme } = useTheme();
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
 
@@ -74,7 +76,15 @@ export function ProgressChart({
   };
 
   const isVolume = metric === "volume";
-  const strokeColor = isVolume ? "#10b981" : "#3b82f6";
+  
+  const strokeColor = isVolume
+    ? theme === "dark"
+      ? "#9bdf57" // Dark mode primary
+      : "#13ecd6" // Light mode primary
+    : theme === "dark"
+      ? "#60a5fa" // Lighter blue for dark mode weight trend
+      : "#3b82f6"; // Standard blue for light mode
+      
   const gradientId = isVolume ? "colorVolume" : "colorWeight";
 
   return (

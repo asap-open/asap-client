@@ -1,5 +1,6 @@
 import { ActivityCalendar, type Activity } from "react-activity-calendar";
 import type { ProgressHeatmapDay } from "../../../utils/progress";
+import { useTheme } from "../../../context/ThemeContext";
 
 interface ProgressHeatmapProps {
   data: ProgressHeatmapDay[];
@@ -7,30 +8,35 @@ interface ProgressHeatmapProps {
 }
 
 export function ProgressHeatmap({ data, loading }: ProgressHeatmapProps) {
+  const { theme: currentTheme } = useTheme();
+
   // If data is empty, generate fallback 365 empty days so calendar renders beautifully
   const calendarData: Activity[] =
     data.length > 0
       ? data.map((d) => ({
-          date: d.date,
-          count: d.count,
-          level: d.level,
-        }))
+        date: d.date,
+        count: d.count,
+        level: d.level,
+      }))
       : Array.from({ length: 365 }).map((_, i) => {
-          const d = new Date();
-          d.setDate(d.getDate() - (364 - i));
-          return {
-            date: d.toISOString().split("T")[0] as string,
-            count: 0,
-            level: 0,
-          };
-        });
+        const d = new Date();
+        d.setDate(d.getDate() - (364 - i));
+        return {
+          date: d.toISOString().split("T")[0] as string,
+          count: 0,
+          level: 0,
+        };
+      });
 
   // Calculate total workouts in this heatmap period
   const totalWorkouts = calendarData.reduce((acc, curr) => acc + curr.count, 0);
 
   const theme = {
-    light: ["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"],
-    dark: ["#1e293b", "#064e3b", "#047857", "#10b981", "#34d399"],
+    // Empty (Gray) -> Soft Cyan -> Primary -> Deep Teal -> Darkest Teal
+    light: ["#e5e7eb", "#8cf4e7", "#13ecd6", "#0fa696", "#0a6c62"],
+
+    // Empty (Warm Dark) -> Dark Olive -> Mid Green -> Primary Hover -> Primary
+    dark: ["#2a2726", "#416323", "#60992d", "#7fc341", "#9bdf57"],
   };
 
   return (
@@ -56,8 +62,9 @@ export function ProgressHeatmap({ data, loading }: ProgressHeatmapProps) {
             <ActivityCalendar
               data={calendarData}
               theme={theme}
-              blockSize={13}
-              blockMargin={3}
+              colorScheme={currentTheme}
+              blockSize={12}
+              blockMargin={4}
               blockRadius={3}
               fontSize={12}
               showWeekdayLabels={["mon", "wed", "fri"]}
