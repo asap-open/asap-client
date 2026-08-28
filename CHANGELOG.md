@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/asap-open/asap-client/compare/v1.5.0...v1.5.1) (2026-08-28)
+
+
+### Bug Fixes
+
+* route API calls through Nginx proxy, not hardcoded URL ([a8092a4](https://github.com/asap-open/asap-client/commit/a8092a40507ad11689903aad596537696d6faf69))
+
 ## [1.5.0](https://github.com/asap-open/asap-client/compare/v1.4.3...v1.5.0) (2026-08-28)
 
 
