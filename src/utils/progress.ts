@@ -2,20 +2,61 @@ import { api } from "./api";
 
 // --- Types ---
 
-export interface ConsistencyData {
-  day: string;
-  value: number;
+export type TimeRange = "1W" | "1M" | "3M" | "6M" | "1Y" | "ALL";
+
+export type SessionLabel =
+  | "Chest"
+  | "Back"
+  | "Shoulders"
+  | "Arms"
+  | "Core"
+  | "Legs"
+  | "Glutes"
+  | "FullBody"
+  | "Cardio"
+  | "Mobility"
+  | "Stretching";
+
+export const SESSION_LABELS: SessionLabel[] = [
+  "Chest",
+  "Back",
+  "Shoulders",
+  "Arms",
+  "Core",
+  "Legs",
+  "Glutes",
+  "FullBody",
+  "Cardio",
+  "Mobility",
+  "Stretching",
+];
+
+export interface ProgressOverviewMetrics {
+  consistency: number;
+  activeDays: number;
+  currentStreak: number;
+  totalVolume: number;
 }
 
-export interface VolumeData {
-  day: string;
-  volume: number;
-  bodyweightScore?: number;
+export interface ProgressHeatmapDay {
+  date: string;
+  count: number;
+  level: 0 | 1 | 2 | 3 | 4;
 }
 
-export interface MuscleData {
-  muscle: string;
+export interface ProgressChartPoint {
+  date: string;
   value: number;
+  sessions?: number;
+}
+
+export interface ProgressOverviewResponse {
+  metrics: ProgressOverviewMetrics;
+  heatmap: ProgressHeatmapDay[];
+  chartData: ProgressChartPoint[];
+  metric: "volume" | "weight";
+  range: TimeRange;
+  selectedLabels: string[];
 }
 
 export interface PersonalBest {
@@ -28,229 +69,29 @@ export interface PersonalBest {
   session: { id: number; sessionName: string; startTime: string } | null;
 }
 
-export type TimeRange = "1W" | "1M" | "3M" | "6M" | "1Y" | "ALL";
-export type ProgressMode = "Strength" | "Body" | "Balanced";
-export type CalendarMetric = "sessions" | "volume" | "intensity";
-export type Granularity = "day" | "week" | "month";
-
-// --- V2 Types ---
-
-export interface ProgressSummaryResponse {
-  range: TimeRange;
-  mode: ProgressMode;
-  totals: {
-    sessions: number;
-    activeDays: number;
-    totalVolume: number;
-    bodyweightScore: number;
-    avgSessionDurationMin: number;
-  };
-  streaks: {
-    current: number;
-    best: number;
-  };
-  adherence: {
-    targetSessionsPerWeek: number;
-    percentage: number;
-  };
-  trends: {
-    sessionsPct: number | null;
-    volumePct: number | null;
-    bodyweightScorePct: number | null;
-  };
-}
-
-export interface ProgressCalendarDay {
-  day: string;
-  sessions: number;
-  volume: number;
-  bodyweightScore: number;
-  intensity: number;
-  level: 0 | 1 | 2 | 3 | 4;
-}
-
-export interface ProgressCalendarResponse {
-  range: TimeRange;
-  metric: CalendarMetric;
-  startDate: string;
-  endDate: string;
-  days: ProgressCalendarDay[];
-  summary: {
-    activeDays: number;
-    totalDays: number;
-    currentStreak: number;
-    bestStreak: number;
-  };
-}
-
-export interface TimeSeriesBucket {
-  bucket: string;
-  sessions: number;
-  volume: number;
-  bodyweightScore: number;
-  durationMin: number;
-}
-
-export interface ProgressTimeSeriesResponse {
-  range: TimeRange;
-  granularity: Granularity;
-  compare: boolean;
-  current: TimeSeriesBucket[];
-  previous: TimeSeriesBucket[];
-}
-
-export interface MuscleBalanceResponse {
-  range: TimeRange;
-  mode: ProgressMode;
-  totalSets: number;
-  muscles: Array<{
-    muscle: string;
-    sets: number;
-    ratio: number;
-  }>;
-  groups: Array<{
-    group: "push" | "pull" | "legs" | "core" | "other";
-    sets: number;
-    ratio: number;
-    target: number;
-    status: "low" | "balanced" | "high";
-  }>;
-}
-
-export interface PBTimelineResponse {
-  range: TimeRange;
-  metric: string | null;
-  exerciseId: string | null;
-  events: PersonalBest[];
-  summary: {
-    count: number;
-    avgDaysBetweenPr: number | null;
-  };
-}
-
-export interface Strength1RMResponse {
-  range: TimeRange;
-  exerciseId: string;
-  exerciseName: string | null;
-  series: Array<{
-    day: string;
-    e1rm: number;
-    sourceWeight: number;
-    sourceReps: number;
-  }>;
-  summary: {
-    latest: {
-      day: string;
-      e1rm: number;
-      sourceWeight: number;
-      sourceReps: number;
-    } | null;
-    best: {
-      day: string;
-      e1rm: number;
-      sourceWeight: number;
-      sourceReps: number;
-    } | null;
-    changePct: number | null;
-  };
-}
-
-export interface WorkloadResponse {
-  range: TimeRange;
-  status: "under" | "optimal" | "high" | "danger" | "insufficient";
-  confidence: "high" | "medium" | "low";
-  acute: number;
-  previous7: number;
-  chronicWeeklyAvg: number;
-  acwr: number | null;
-  rampRate: number;
-  recommendation: string;
-  series: Array<{
-    day: string;
-    workload: number;
-    sessions: number;
-  }>;
-}
-
-export interface DayDetailResponse {
-  date: string;
-  summary: {
-    sessions: number;
-    totalDurationMin: number;
-    totalVolume: number;
-    bodyweightScore: number;
-    totalSets: number;
-  };
-  sessions: Array<{
-    id: number;
-    sessionName: string;
-    labels: string[];
-    startTime: string;
-    endTime: string | null;
-    stats: {
-      durationMin: number;
-      totalVolume: number;
-      bodyweightScore: number;
-      exerciseCount: number;
-      setCount: number;
-    };
-  }>;
-  exerciseBreakdown: Array<{
-    exerciseId: string;
-    name: string;
-    category: string;
-    sets: number;
-    volume: number;
-    bodyweightScore: number;
-  }>;
-}
-
-export type WeightHistoryResponse = Array<{
-  date: string;
-  weight: number | null;
-}>;
-
 // --- API Functions ---
 
 /**
- * Fetches consistency heatmap data (e.g. for calendar).
+ * Fetches the simplified progress overview: KPI metrics, GitHub heatmap data, and chart series.
  */
-export const fetchConsistency = async (
-  token: string | null,
-  range: TimeRange = "ALL",
-): Promise<ConsistencyData[]> => {
-  if (!token) throw new Error("No auth token provided");
-  const response = await api.get(`/progress/consistency?range=${range}`, token);
-  return response;
-};
-
-/**
- * Fetches volume stats (e.g. for bar chart).
- */
-export const fetchVolumeStats = async (
+export const fetchProgressOverview = async (
   token: string | null,
   range: TimeRange = "1M",
-): Promise<VolumeData[]> => {
+  metric: "volume" | "weight" = "volume",
+  labels: string[] = [],
+): Promise<ProgressOverviewResponse> => {
   if (!token) throw new Error("No auth token provided");
-  const response = await api.get(`/progress/volume?range=${range}`, token);
-  return response;
+  const params = new URLSearchParams();
+  params.set("range", range);
+  params.set("metric", metric);
+  if (labels.length > 0) {
+    params.set("labels", labels.join(","));
+  }
+  return await api.get(`/progress/overview?${params.toString()}`, token);
 };
 
 /**
- * Fetches muscle distribution (e.g. for radar chart).
- */
-export const fetchMuscleDistribution = async (
-  token: string | null,
-  range: TimeRange = "ALL",
-): Promise<MuscleData[]> => {
-  if (!token) throw new Error("No auth token provided");
-  const response = await api.get(`/progress/muscles?range=${range}`, token);
-  return response;
-};
-
-/**
- * Fetches personal bests for specific exercises.
- * exerciseIds is required.
+ * Personal Bests Utilities (used by modals and tracking settings)
  */
 export const fetchPersonalBests = async (
   token: string | null,
@@ -268,9 +109,6 @@ export const fetchPersonalBests = async (
   return response;
 };
 
-/**
- * Delete all PB records for a specific exercise (called when untracking).
- */
 export const deleteExercisePBs = async (
   token: string | null,
   exerciseId: string,
@@ -279,114 +117,7 @@ export const deleteExercisePBs = async (
   await api.delete(`/pbs/${exerciseId}`, token);
 };
 
-/**
- * Trigger full PB recalculation from history (called when tracking a new exercise).
- */
 export const syncPBs = async (token: string | null): Promise<void> => {
   if (!token) throw new Error("No auth token provided");
   await api.post("/pbs/sync", {}, token);
-};
-
-// --- V2 API Functions ---
-
-export const fetchProgressSummary = async (
-  token: string | null,
-  range: TimeRange,
-  mode: ProgressMode,
-): Promise<ProgressSummaryResponse> => {
-  if (!token) throw new Error("No auth token provided");
-  return await api.get(`/progress/summary?range=${range}&mode=${mode}`, token);
-};
-
-export const fetchProgressCalendar = async (
-  token: string | null,
-  range: TimeRange,
-  metric: CalendarMetric = "sessions",
-): Promise<ProgressCalendarResponse> => {
-  if (!token) throw new Error("No auth token provided");
-  return await api.get(
-    `/progress/calendar?range=${range}&metric=${metric}`,
-    token,
-  );
-};
-
-export const fetchProgressTimeSeries = async (
-  token: string | null,
-  range: TimeRange,
-  granularity: Granularity = "day",
-  compare: boolean = false,
-): Promise<ProgressTimeSeriesResponse> => {
-  if (!token) throw new Error("No auth token provided");
-  const compareFlag = compare ? "true" : "false";
-  return await api.get(
-    `/progress/timeseries?range=${range}&granularity=${granularity}&compare=${compareFlag}`,
-    token,
-  );
-};
-
-export const fetchMuscleBalance = async (
-  token: string | null,
-  range: TimeRange,
-  mode: ProgressMode,
-): Promise<MuscleBalanceResponse> => {
-  if (!token) throw new Error("No auth token provided");
-  return await api.get(
-    `/progress/muscle-balance?range=${range}&mode=${mode}`,
-    token,
-  );
-};
-
-export const fetchPBTimeline = async (
-  token: string | null,
-  range: TimeRange,
-  exerciseId?: string,
-  metric?: string,
-): Promise<PBTimelineResponse> => {
-  if (!token) throw new Error("No auth token provided");
-
-  const params = new URLSearchParams();
-  params.set("range", range);
-  if (exerciseId) params.set("exerciseId", exerciseId);
-  if (metric) params.set("metric", metric);
-
-  return await api.get(`/progress/pbs/timeline?${params.toString()}`, token);
-};
-
-export const fetchStrength1RM = async (
-  token: string | null,
-  range: TimeRange,
-  exerciseId: string,
-): Promise<Strength1RMResponse> => {
-  if (!token) throw new Error("No auth token provided");
-  if (!exerciseId) throw new Error("exerciseId is required");
-
-  return await api.get(
-    `/progress/strength/1rm?range=${range}&exerciseId=${exerciseId}`,
-    token,
-  );
-};
-
-export const fetchWorkload = async (
-  token: string | null,
-  range: TimeRange,
-): Promise<WorkloadResponse> => {
-  if (!token) throw new Error("No auth token provided");
-  return await api.get(`/progress/workload?range=${range}`, token);
-};
-
-export const fetchDayDetail = async (
-  token: string | null,
-  date: string,
-): Promise<DayDetailResponse> => {
-  if (!token) throw new Error("No auth token provided");
-  if (!date) throw new Error("date is required");
-  return await api.get(`/progress/day-detail?date=${date}`, token);
-};
-
-export const fetchWeightHistory = async (
-  token: string | null,
-  range: TimeRange,
-): Promise<WeightHistoryResponse> => {
-  if (!token) throw new Error("No auth token provided");
-  return await api.get(`/weights/history?range=${range}`, token);
 };
