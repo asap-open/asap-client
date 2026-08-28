@@ -20,6 +20,3 @@ Welcome to **ASAP** — a data-driven fitness tracking and analytics platform de
 ### Sports Science & Metrics
 * [Training Modes](/dashboard/help/training-modes) — Body, Strength, and Balanced muscle split targets.
 * [Workload & ACWR](/dashboard/help/workload) — Acute:Chronic Workload Ratio and injury prevention zones.
-
-### Help & Reference
-* [FAQ & Quick Tips](/dashboard/help/faq) — Common questions and tips for getting the most out of ASAP.

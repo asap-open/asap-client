@@ -9,7 +9,6 @@ import {
   User,
   Target,
   Activity,
-  HelpCircle,
   FileText,
   type LucideIcon,
 } from "lucide-react";
@@ -97,13 +96,6 @@ export const DOC_TOPICS: DocTopic[] = [
     shortDesc: "Injury prevention & Ramp Rate",
     icon: Activity,
     category: "Sports Science",
-  },
-  {
-    id: "faq",
-    title: "FAQ & Tips",
-    shortDesc: "Quick answers to common questions",
-    icon: HelpCircle,
-    category: "Reference",
   },
 ];
 
