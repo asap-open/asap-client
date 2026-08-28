@@ -39,6 +39,7 @@ export default function HelpContentRenderer({
       <div className="flex items-center gap-2 text-xs font-semibold text-text-muted mb-4">
         <Link
           to="/dashboard/help"
+          replace
           className="hover:text-primary transition-colors"
         >
           Docs
@@ -59,6 +60,7 @@ export default function HelpContentRenderer({
                 return (
                   <Link
                     to={href}
+                    replace={href.startsWith("/dashboard/help")}
                     className="font-medium text-primary hover:text-primary-hover underline underline-offset-2"
                     {...props}
                   >

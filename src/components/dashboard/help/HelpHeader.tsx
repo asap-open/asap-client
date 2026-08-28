@@ -19,9 +19,9 @@ export default function HelpHeader({
         {/* Left: Back button & Title */}
         <div className="flex items-center gap-3 min-w-0">
           <button
-            onClick={() => navigate(-1)}
-            aria-label="Go back"
-            className="p-2 rounded-xl hover:bg-surface-hover transition-colors text-text-muted hover:text-text-main shrink-0"
+            onClick={() => navigate("/profile")}
+            aria-label="Go back to Profile"
+            className="p-2 rounded-xl hover:bg-surface-hover transition-colors text-text-muted hover:text-text-main shrink-0 cursor-pointer"
           >
             <ArrowLeft size={20} />
           </button>
@@ -39,7 +39,7 @@ export default function HelpHeader({
         <div className="md:hidden">
           <button
             onClick={onOpenMobileDrawer}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface border border-border text-xs font-semibold text-text-main shadow-xs active:scale-95 transition-all"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface border border-border text-xs font-semibold text-text-main shadow-xs active:scale-95 transition-all cursor-pointer"
           >
             <BookOpen size={16} className="text-primary" />
             <span className="truncate max-w-[120px]">{currentTopic.title}</span>

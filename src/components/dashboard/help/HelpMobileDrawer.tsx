@@ -95,6 +95,7 @@ export default function HelpMobileDrawer({
                     <Link
                       key={topic.id}
                       to={href}
+                      replace
                       onClick={onClose}
                       className={`flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl text-sm transition-all ${
                         isActive

@@ -34,20 +34,19 @@ export default function HelpSidebar({ activeTopicId }: HelpSidebarProps) {
                   <Link
                     key={topic.id}
                     to={href}
-                    className={`group flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-sm transition-all ${
-                      isActive
-                        ? "bg-primary/10 text-primary border border-primary/20 shadow-xs font-semibold"
-                        : "text-text-muted hover:bg-surface-hover hover:text-text-main font-medium"
-                    }`}
+                    replace
+                    className={`group flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-sm transition-all ${isActive
+                      ? "bg-primary/10 text-primary border border-primary/20 shadow-xs font-semibold"
+                      : "text-text-muted hover:bg-surface-hover hover:text-text-main font-medium"
+                      }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <Icon
                         size={16}
-                        className={`shrink-0 ${
-                          isActive
-                            ? "text-primary"
-                            : "text-text-muted group-hover:text-text-main"
-                        }`}
+                        className={`shrink-0 ${isActive
+                          ? "text-primary"
+                          : "text-text-muted group-hover:text-text-main"
+                          }`}
                       />
                       <span className="truncate">{topic.title}</span>
                     </div>

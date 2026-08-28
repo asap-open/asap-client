@@ -19,6 +19,7 @@ export default function HelpPagination({ activeTopicId }: HelpPaginationProps) {
       {prev ? (
         <Link
           to={prev.id === "index" ? "/dashboard/help" : `/dashboard/help/${prev.id}`}
+          replace
           className="group flex flex-col items-start p-4 rounded-2xl bg-surface border border-border hover:border-primary/40 hover:shadow-xs transition-all text-left"
         >
           <span className="flex items-center gap-1.5 text-xs font-semibold text-text-muted group-hover:text-primary transition-colors">
@@ -38,6 +39,7 @@ export default function HelpPagination({ activeTopicId }: HelpPaginationProps) {
       {next ? (
         <Link
           to={`/dashboard/help/${next.id}`}
+          replace
           className="group flex flex-col items-end p-4 rounded-2xl bg-surface border border-border hover:border-primary/40 hover:shadow-xs transition-all text-right sm:col-start-2"
         >
           <span className="flex items-center gap-1.5 text-xs font-semibold text-text-muted group-hover:text-primary transition-colors">
