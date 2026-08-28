@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
 import HeroBackground from "../components/ui/HeroBackground";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../utils/api";
@@ -83,8 +83,9 @@ export default function Login() {
             className="space-y-6 max-w-md mx-auto w-full"
           >
             {error && (
-              <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg border border-red-100">
-                {error}
+              <div className="flex items-start gap-2.5 bg-red-50 text-red-600 text-sm p-3.5 rounded-xl border border-red-200">
+                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                <span className="leading-snug">{error}</span>
               </div>
             )}
             {/* identifier Field */}

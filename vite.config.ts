@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => {
 
       proxy: {
         "/api": {
-          target: env.BACKEND_SERVER_URL || "http://server:3000",
+          target: env.VITE_BACKEND_SERVER_URL || "http://server:3000",
           changeOrigin: true,
           secure: false,
         },
@@ -28,8 +28,8 @@ export default defineConfig(({ mode }) => {
 
       hmr: env.DOMAIN_NAME
         ? {
-            host: env.DOMAIN_NAME.split(",")[0].trim(),
-          }
+          host: env.DOMAIN_NAME.split(",")[0].trim(),
+        }
         : undefined,
     },
 

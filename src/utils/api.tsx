@@ -1,5 +1,5 @@
 // Use the env var. If it's missing, fallback to "/api" (proxy)
-const ENV_URL = import.meta.env.BACKEND_SERVER_URL;
+const ENV_URL = import.meta.env.VITE_BACKEND_SERVER_URL;
 
 const BASE_URL = ENV_URL ? `${ENV_URL}/api` : "/api";
 
@@ -30,7 +30,15 @@ const fetchWithAuth = async (
     options.body = JSON.stringify(body);
   }
 
-  const response = await fetch(`${BASE_URL}${normalizedEndpoint}`, options);
+  let response: Response;
+  try {
+    response = await fetch(`${BASE_URL}${normalizedEndpoint}`, options);
+  } catch (networkError: any) {
+    console.error("Network / CORS Error:", networkError);
+    throw new Error(
+      "Unable to connect to server. The request was blocked or the server is unreachable.",
+    );
+  }
 
   // Check for 401 Unauthorized (Expired/Invalid Token)
   if (response.status === 401) {
@@ -51,7 +59,7 @@ const fetchWithAuth = async (
   }
 
   const text = await response.text();
-  let result;
+  let result: any;
   try {
     result = text ? JSON.parse(text) : {};
   } catch (error) {
@@ -62,6 +70,13 @@ const fetchWithAuth = async (
   }
 
   if (!response.ok) {
+    if (response.status === 403) {
+      throw new Error(
+        result.error ||
+        result.message ||
+        "Access denied: Request from this origin is not allowed (CORS 403).",
+      );
+    }
     throw new Error(result.error || result.message || "Something went wrong");
   }
 

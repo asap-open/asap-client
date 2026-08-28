@@ -19,7 +19,7 @@ RUN yarn build
 FROM nginx:alpine
 
 # Default backend target (override at runtime)
-ENV BACKEND_SERVER_URL=http://server:3000
+ENV VITE_BACKEND_SERVER_URL=http://server:3000
 
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html

@@ -10,6 +10,7 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 import HeroBackground from "../components/ui/HeroBackground";
 import { useAuth } from "../context/AuthContext";
@@ -109,8 +110,9 @@ export default function Signup() {
             className="flex flex-col gap-4 px-6 md:px-12 mt-2"
           >
             {error && (
-              <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg border border-red-100">
-                {error}
+              <div className="flex items-start gap-2.5 bg-red-50 text-red-600 text-sm p-3.5 rounded-xl border border-red-200">
+                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                <span className="leading-snug">{error}</span>
               </div>
             )}
 

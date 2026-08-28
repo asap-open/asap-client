@@ -71,14 +71,14 @@ yarn install
 Create a `.env` file in the client directory:
 
 ```env
-BACKEND_SERVER_URL=http://localhost:3000
+VITE_BACKEND_SERVER_URL=http://localhost:3000
 DOMAIN_NAME=localhost
 CAPACITOR_ANDROID_STUDIO_PATH=/home/<your-user>/.android-studio/bin/studio.sh
 ```
 
 | Variable             | Required | Description                                                             |
 | -------------------- | -------- | ----------------------------------------------------------------------- |
-| `BACKEND_SERVER_URL` | ✅       | API server URL (used by Vite proxy and API utility fallback resolution) |
+| `VITE_BACKEND_SERVER_URL` | ✅       | API server URL  |
 | `DOMAIN_NAME`        |          | Hostname for HMR/allowed hosts (can be comma-separated)                 |
 
 3. **Start development server**
@@ -103,7 +103,7 @@ The app will be available at http://localhost:5173
 ```bash
 docker build -t asap-client .
 docker run \
-  -e BACKEND_SERVER_URL="http://localhost:3000" \
+  -e VITE_BACKEND_SERVER_URL="http://localhost:3000" \
   -e DOMAIN_NAME="localhost" \
   -p 80:80 \
   asap-client
