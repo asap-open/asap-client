@@ -18,10 +18,8 @@ RUN yarn build
 # Stage 2: Serve with Nginx
 FROM nginx:alpine
 
-# VITE_BACKEND_SERVER_URL is NOT used by the compiled JavaScript.
-# The JS always calls /api (relative), and Nginx proxies it to the backend.
-# This variable is injected at runtime via `docker run -e` or compose environment:
-# it is consumed by nginx.conf.template via envsubst when the container starts.
+# Default backend target (override at runtime)
+ENV VITE_BACKEND_SERVER_URL=http://server:3000
 
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
