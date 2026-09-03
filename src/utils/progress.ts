@@ -50,13 +50,27 @@ export interface ProgressChartPoint {
   sessions?: number;
 }
 
-export interface ProgressOverviewResponse {
-  metrics: ProgressOverviewMetrics;
+export interface ProgressHeatmapResponse {
+  year?: number;
+  startDate: string;
+  endDate: string;
+  totalWorkouts: number;
+  currentStreak: number;
   heatmap: ProgressHeatmapDay[];
+}
+
+export interface ProgressMetricsResponse {
+  metrics: ProgressOverviewMetrics;
+  range: TimeRange;
+  selectedLabels: SessionLabel[];
+}
+
+export interface VolumeTrackingResponse {
   chartData: ProgressChartPoint[];
   metric: "volume" | "weight";
   range: TimeRange;
-  selectedLabels: string[];
+  selectedLabels: SessionLabel[];
+  totalVolume?: number;
 }
 
 export interface PersonalBest {
@@ -72,14 +86,47 @@ export interface PersonalBest {
 // --- API Functions ---
 
 /**
- * Fetches the simplified progress overview: KPI metrics, GitHub heatmap data, and chart series.
+ * Fetches activity heatmap data for a given year or trailing 365 days.
  */
-export const fetchProgressOverview = async (
+export const fetchProgressHeatmap = async (
+  token: string | null,
+  year?: number,
+): Promise<ProgressHeatmapResponse> => {
+  if (!token) throw new Error("No auth token provided");
+  const params = new URLSearchParams();
+  if (year !== undefined) {
+    params.set("year", year.toString());
+  }
+  const query = params.toString() ? `?${params.toString()}` : "";
+  return await api.get(`/progress/heatmap${query}`, token);
+};
+
+/**
+ * Fetches card KPI metrics (consistency, activeDays, currentStreak, totalVolume).
+ */
+export const fetchProgressMetrics = async (
+  token: string | null,
+  range: TimeRange = "1M",
+  labels: string[] = [],
+): Promise<ProgressMetricsResponse> => {
+  if (!token) throw new Error("No auth token provided");
+  const params = new URLSearchParams();
+  params.set("range", range);
+  if (labels.length > 0) {
+    params.set("labels", labels.join(","));
+  }
+  return await api.get(`/progress/metrics?${params.toString()}`, token);
+};
+
+/**
+ * Fetches volume or body weight tracking chart data.
+ */
+export const fetchVolumeTracking = async (
   token: string | null,
   range: TimeRange = "1M",
   metric: "volume" | "weight" = "volume",
   labels: string[] = [],
-): Promise<ProgressOverviewResponse> => {
+): Promise<VolumeTrackingResponse> => {
   if (!token) throw new Error("No auth token provided");
   const params = new URLSearchParams();
   params.set("range", range);
@@ -87,7 +134,7 @@ export const fetchProgressOverview = async (
   if (labels.length > 0) {
     params.set("labels", labels.join(","));
   }
-  return await api.get(`/progress/overview?${params.toString()}`, token);
+  return await api.get(`/progress/volume?${params.toString()}`, token);
 };
 
 /**

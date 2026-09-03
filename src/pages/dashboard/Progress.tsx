@@ -3,10 +3,17 @@ import { useAuth } from "../../context/AuthContext";
 import { fetchWithSWR } from "../../utils/swrHelpers";
 import { CacheTTL } from "../../utils/cacheService";
 import {
-  fetchProgressOverview,
-  type ProgressOverviewResponse,
+  fetchProgressHeatmap,
+  fetchProgressMetrics,
+  fetchVolumeTracking,
+  type ProgressHeatmapDay,
+  type ProgressOverviewMetrics,
+  type ProgressChartPoint,
   type TimeRange,
   type SessionLabel,
+  type ProgressHeatmapResponse,
+  type ProgressMetricsResponse,
+  type VolumeTrackingResponse,
 } from "../../utils/progress";
 import { ProgressCards } from "../../components/dashboard/progress/ProgressCards";
 import { ProgressHeatmap } from "../../components/dashboard/progress/ProgressHeatmap";
@@ -20,7 +27,12 @@ export default function Progress() {
   const [range, setRange] = useState<TimeRange>("1M");
   const [metric, setMetric] = useState<"volume" | "weight">("volume");
   const [selectedLabels, setSelectedLabels] = useState<SessionLabel[]>([]);
-  const [data, setData] = useState<ProgressOverviewResponse | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined);
+
+  const [heatmap, setHeatmap] = useState<ProgressHeatmapDay[]>([]);
+  const [metrics, setMetrics] = useState<ProgressOverviewMetrics | null>(null);
+  const [chartData, setChartData] = useState<ProgressChartPoint[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,26 +43,41 @@ export default function Progress() {
       setError(null);
 
       const labelsKey = selectedLabels.sort().join(",");
-      const cacheKey = `progress:overview:${range}:${metric}:${labelsKey}`;
+      const heatmapCacheKey = `progress:heatmap:${selectedYear ?? "trailing365"}`;
 
       try {
-        const result = await fetchWithSWR<ProgressOverviewResponse>(
-          cacheKey,
-          () => fetchProgressOverview(token, range, metric, selectedLabels),
-          CacheTTL.FIVE_MINUTES,
-          (freshData) => {
-            setData(freshData);
-          },
-        );
-        setData(result);
+        const [heatmapRes, metricsRes, volumeRes] = await Promise.all([
+          fetchWithSWR<ProgressHeatmapResponse>(
+            heatmapCacheKey,
+            () => fetchProgressHeatmap(token, selectedYear),
+            CacheTTL.FIVE_MINUTES,
+            (fresh) => setHeatmap(fresh.heatmap),
+          ),
+          fetchWithSWR<ProgressMetricsResponse>(
+            `progress:metrics:${range}:${labelsKey}`,
+            () => fetchProgressMetrics(token, range, selectedLabels),
+            CacheTTL.FIVE_MINUTES,
+            (fresh) => setMetrics(fresh.metrics),
+          ),
+          fetchWithSWR<VolumeTrackingResponse>(
+            `progress:volume:${range}:${metric}:${labelsKey}`,
+            () => fetchVolumeTracking(token, range, metric, selectedLabels),
+            CacheTTL.FIVE_MINUTES,
+            (fresh) => setChartData(fresh.chartData),
+          ),
+        ]);
+
+        setHeatmap(heatmapRes.heatmap);
+        setMetrics(metricsRes.metrics);
+        setChartData(volumeRes.chartData);
       } catch (err) {
-        console.error("Failed to load progress overview:", err);
+        console.error("Failed to load progress data:", err);
         setError(err instanceof Error ? err.message : "Failed to load progress data");
       } finally {
         if (!isBackground) setLoading(false);
       }
     },
-    [token, range, metric, selectedLabels],
+    [token, range, metric, selectedLabels, selectedYear],
   );
 
   useEffect(() => {
@@ -108,27 +135,28 @@ export default function Progress() {
         </div>
       )}
 
-      {/* Middle Section: GitHub-Style Consistency Heatmap */}
+      {/* Middle Section: GitHub-Style Consistency Heatmap with Year Selector */}
       <ProgressHeatmap
-        data={data?.heatmap ?? []}
-        loading={loading && !data}
+        data={heatmap}
+        loading={loading && heatmap.length === 0}
+        selectedYear={selectedYear}
+        onYearChange={(year) => setSelectedYear(year)}
       />
 
       {/* Top Section: 4 KPI Cards */}
       <ProgressCards
-        metrics={data?.metrics ?? null}
-        loading={loading && !data}
+        metrics={metrics}
+        loading={loading && metrics === null}
       />
-
 
       {/* Bottom Section: Single Unified Recharts Interactive Graph */}
       <ProgressChart
-        data={data?.chartData ?? []}
+        data={chartData}
         metric={metric}
         selectedLabels={selectedLabels}
         onMetricChange={(newMetric) => setMetric(newMetric)}
         onLabelsChange={(newLabels) => setSelectedLabels(newLabels)}
-        loading={loading && !data}
+        loading={loading && chartData.length === 0}
       />
     </div>
   );

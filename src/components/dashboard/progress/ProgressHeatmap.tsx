@@ -5,28 +5,49 @@ import { useTheme } from "../../../context/ThemeContext";
 interface ProgressHeatmapProps {
   data: ProgressHeatmapDay[];
   loading?: boolean;
+  selectedYear?: number;
+  onYearChange?: (year?: number) => void;
+  yearOptions?: number[];
 }
 
-export function ProgressHeatmap({ data, loading }: ProgressHeatmapProps) {
+export function ProgressHeatmap({
+  data,
+  loading,
+  selectedYear,
+  onYearChange,
+  yearOptions,
+}: ProgressHeatmapProps) {
   const { theme: currentTheme } = useTheme();
 
-  // If data is empty, generate fallback 365 empty days so calendar renders beautifully
+  const currentYear = new Date().getFullYear();
+  const availableYears =
+    yearOptions && yearOptions.length > 0
+      ? yearOptions
+      : [
+          currentYear,
+          currentYear - 1,
+          currentYear - 2,
+          currentYear - 3,
+          currentYear - 4,
+        ];
+
+  // If data is empty, generate fallback days so calendar renders beautifully
   const calendarData: Activity[] =
     data.length > 0
       ? data.map((d) => ({
-        date: d.date,
-        count: d.count,
-        level: d.level,
-      }))
+          date: d.date,
+          count: d.count,
+          level: d.level,
+        }))
       : Array.from({ length: 365 }).map((_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - (364 - i));
-        return {
-          date: d.toISOString().split("T")[0] as string,
-          count: 0,
-          level: 0,
-        };
-      });
+          const d = new Date();
+          d.setDate(d.getDate() - (364 - i));
+          return {
+            date: d.toISOString().split("T")[0] as string,
+            count: 0,
+            level: 0,
+          };
+        });
 
   // Calculate total workouts in this heatmap period
   const totalWorkouts = calendarData.reduce((acc, curr) => acc + curr.count, 0);
@@ -41,15 +62,39 @@ export function ProgressHeatmap({ data, loading }: ProgressHeatmapProps) {
 
   return (
     <div className="bg-surface border border-border/80 rounded-2xl p-5 md:p-6 shadow-xs space-y-4 w-full">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/40 pb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/40 pb-3">
         <div>
           <h2 className="text-base font-bold text-text-main flex items-center gap-2">
             Activity Heatmap
           </h2>
           <p className="text-xs text-text-muted">
-            Workout consistency over the past year ({totalWorkouts} total {totalWorkouts === 1 ? "session" : "sessions"})
+            Workout consistency {selectedYear ? `in ${selectedYear}` : "over the past year"} ({totalWorkouts} total {totalWorkouts === 1 ? "session" : "sessions"})
           </p>
         </div>
+
+        {/* Year Selector Dropdown */}
+        {onYearChange && (
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <label htmlFor="heatmap-year-select" className="text-xs font-medium text-text-muted">
+              Year:
+            </label>
+            <select
+              id="heatmap-year-select"
+              value={selectedYear ?? ""}
+              onChange={(e) =>
+                onYearChange(e.target.value ? Number(e.target.value) : undefined)
+              }
+              className="bg-surface-hover/80 text-text-main text-xs font-semibold px-3 py-1.5 rounded-xl border border-border/80 hover:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary transition-all cursor-pointer"
+            >
+              <option value="">Last 12 Months</option>
+              {availableYears.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       <div className="overflow-x-auto pb-2 pt-1 flex justify-center scrollbar-thin scrollbar-thumb-border">
@@ -88,7 +133,9 @@ export function ProgressHeatmap({ data, loading }: ProgressHeatmapProps) {
                   "Dec",
                 ],
                 weekdays: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-                totalCount: "{{count}} workouts in the last year",
+                totalCount: selectedYear
+                  ? `{{count}} workouts in ${selectedYear}`
+                  : "{{count}} workouts in the last year",
               }}
               tooltips={{
                 activity: {
