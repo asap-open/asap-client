@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.3](https://github.com/asap-open/asap-client/compare/v1.5.2...v1.5.3) (2026-09-03)
+
+
+### Bug Fixes
+
+* refactor the api call ([84ae8be](https://github.com/asap-open/asap-client/commit/84ae8be58c13b0d3b1a4a8a51602f83822f61ba7))
+
 ## [1.5.2](https://github.com/asap-open/asap-client/compare/v1.5.1...v1.5.2) (2026-08-29)
 
 
